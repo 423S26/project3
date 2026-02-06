@@ -25,11 +25,12 @@
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
 
-    /* Event category colors */
-    --event-schedule: 221.2 83.2% 53.3%;
-    --event-bills: 0 84.2% 60.2%;
-    --event-workouts: 142.1 76.2% 36.3%;
-    --event-meals: 32.1 94.6% 43.7%;
+    /* Event category colors - Sports Psychology */
+    --event-training: 221.2 83.2% 53.3%;
+    --event-recovery: 142.1 76.2% 36.3%;
+    --event-mood: 270 70% 60%;
+    --event-fueling: 32.1 94.6% 43.7%;
+    --event-assessments: 180 60% 40%;
   }
 
   .dark {
@@ -88,23 +89,28 @@
   @apply cursor-pointer rounded-sm px-1 text-xs;
 }
 
-/* Event category colors */
-.fc-event.event-schedule {
-  background-color: hsl(var(--event-schedule));
-  border-color: hsl(var(--event-schedule));
+/* Event category colors - Sports Psychology */
+.fc-event.event-training {
+  background-color: hsl(var(--event-training));
+  border-color: hsl(var(--event-training));
 }
 
-.fc-event.event-bills {
-  background-color: hsl(var(--event-bills));
-  border-color: hsl(var(--event-bills));
+.fc-event.event-recovery {
+  background-color: hsl(var(--event-recovery));
+  border-color: hsl(var(--event-recovery));
 }
 
-.fc-event.event-workouts {
-  background-color: hsl(var(--event-workouts));
-  border-color: hsl(var(--event-workouts));
+.fc-event.event-mood {
+  background-color: hsl(var(--event-mood));
+  border-color: hsl(var(--event-mood));
 }
 
-.fc-event.event-meals {
-  background-color: hsl(var(--event-meals));
-  border-color: hsl(var(--event-meals));
+.fc-event.event-fueling {
+  background-color: hsl(var(--event-fueling));
+  border-color: hsl(var(--event-fueling));
+}
+
+.fc-event.event-assessments {
+  background-color: hsl(var(--event-assessments));
+  border-color: hsl(var(--event-assessments));
 }

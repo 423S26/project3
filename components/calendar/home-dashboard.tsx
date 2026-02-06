@@ -28,7 +28,7 @@ export function HomeDashboard() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Your unified view of health, finance, and schedule
+          Your unified view of training, recovery, and wellbeing
         </p>
       </div>
 

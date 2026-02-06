@@ -7,7 +7,7 @@ import {
   ALL_CATEGORIES,
   CATEGORY_CONFIG,
 } from "@/lib/event-types";
-import { Calendar, CreditCard, Dumbbell, Utensils } from "lucide-react";
+import { Dumbbell, Battery, Smile, Utensils, ClipboardList } from "lucide-react";
 
 interface CalendarFiltersProps {
   filters: Record<EventCategory, boolean>;
@@ -15,10 +15,11 @@ interface CalendarFiltersProps {
 }
 
 const CATEGORY_ICONS: Record<EventCategory, React.ReactNode> = {
-  schedule: <Calendar className="h-4 w-4" />,
-  bills: <CreditCard className="h-4 w-4" />,
-  workouts: <Dumbbell className="h-4 w-4" />,
-  meals: <Utensils className="h-4 w-4" />,
+  training: <Dumbbell className="h-4 w-4" />,
+  recovery: <Battery className="h-4 w-4" />,
+  mood: <Smile className="h-4 w-4" />,
+  fueling: <Utensils className="h-4 w-4" />,
+  assessments: <ClipboardList className="h-4 w-4" />,
 };
 
 export function CalendarFilters({

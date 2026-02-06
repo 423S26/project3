@@ -1,7 +1,7 @@
 /**
- * Event category types for the Anchor dashboard
+ * Event category types for the Anchor sports psychology dashboard
  */
-export type EventCategory = "schedule" | "bills" | "workouts" | "meals";
+export type EventCategory = "training" | "recovery" | "mood" | "fueling" | "assessments";
 
 /**
  * Unified event type used across the calendar and dashboard
@@ -33,33 +33,40 @@ export interface CategoryConfig {
  * Category configuration mapping
  */
 export const CATEGORY_CONFIG: Record<EventCategory, CategoryConfig> = {
-  schedule: {
-    label: "Schedule",
+  training: {
+    label: "Training",
     color: "hsl(221.2 83.2% 53.3%)",
     bgColor: "bg-blue-500",
     textColor: "text-blue-500",
-    icon: "Calendar",
+    icon: "Dumbbell",
   },
-  bills: {
-    label: "Bills",
-    color: "hsl(0 84.2% 60.2%)",
-    bgColor: "bg-red-500",
-    textColor: "text-red-500",
-    icon: "CreditCard",
-  },
-  workouts: {
-    label: "Workouts",
+  recovery: {
+    label: "Recovery",
     color: "hsl(142.1 76.2% 36.3%)",
     bgColor: "bg-green-500",
     textColor: "text-green-500",
-    icon: "Dumbbell",
+    icon: "Battery",
   },
-  meals: {
-    label: "Meals",
+  mood: {
+    label: "Mood",
+    color: "hsl(270 70% 60%)",
+    bgColor: "bg-violet-500",
+    textColor: "text-violet-500",
+    icon: "Smile",
+  },
+  fueling: {
+    label: "Fueling",
     color: "hsl(32.1 94.6% 43.7%)",
     bgColor: "bg-orange-500",
     textColor: "text-orange-500",
     icon: "Utensils",
+  },
+  assessments: {
+    label: "Assessments",
+    color: "hsl(180 60% 40%)",
+    bgColor: "bg-teal-500",
+    textColor: "text-teal-500",
+    icon: "ClipboardList",
   },
 };
 
@@ -74,10 +81,11 @@ export function getCategoryClassName(category: EventCategory): string {
  * All event categories for filter iteration
  */
 export const ALL_CATEGORIES: EventCategory[] = [
-  "schedule",
-  "bills",
-  "workouts",
-  "meals",
+  "training",
+  "recovery",
+  "mood",
+  "fueling",
+  "assessments",
 ];
 
 /**
@@ -85,9 +93,10 @@ export const ALL_CATEGORIES: EventCategory[] = [
  */
 export function getDefaultFilters(): Record<EventCategory, boolean> {
   return {
-    schedule: true,
-    bills: true,
-    workouts: true,
-    meals: true,
+    training: true,
+    recovery: true,
+    mood: true,
+    fueling: true,
+    assessments: true,
   };
 }
