@@ -1,3 +1,9 @@
+/**
+ * Route: /psychological-state
+ * Mental wellbeing tracking page for mood, stress, motivation, and readiness.
+ * Currently displays placeholder content; check-ins coming in Sprint 2, trends in Sprint 5.
+ */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Smile, TrendingUp, Zap, Target } from "lucide-react";
 
