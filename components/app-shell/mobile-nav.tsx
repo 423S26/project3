@@ -1,3 +1,19 @@
+/**
+ * MobileNav - Responsive navigation for small screens (below the lg breakpoint).
+ *
+ * Consists of three pieces:
+ *   1. A sticky header bar with the Anchor logo and a hamburger/close toggle.
+ *   2. A semi-transparent backdrop overlay that closes the drawer on tap.
+ *   3. A slide-out navigation panel (same 256px width as the desktop sidebar)
+ *      that animates in from the left via CSS transform.
+ *
+ * The open/closed state is managed with local `useState`. Clicking a nav label
+ * or the overlay automatically closes the drawer.
+ *
+ * NOTE: `navItems` is duplicated from sidebar.tsx. Keep both arrays in sync
+ * when adding or removing routes.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -15,6 +31,10 @@ import {
 import { NavLink } from "./nav-link";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Navigation items for the mobile drawer.
+ * Mirrors the desktop sidebar's `navItems` array.
+ */
 const navItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
   { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
@@ -24,12 +44,14 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
+/** Mobile header bar + slide-out navigation drawer. Hidden on lg+ screens. */
 export function MobileNav() {
+  /** Controls whether the slide-out drawer is visible. */
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile Header */}
+      {/* Sticky header with logo and hamburger toggle (visible < lg only) */}
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-card px-4 lg:hidden">
         <div className="flex items-center gap-2">
           <Anchor className="h-6 w-6 text-primary" />
@@ -45,7 +67,7 @@ export function MobileNav() {
         </Button>
       </header>
 
-      {/* Mobile Navigation Overlay */}
+      {/* Backdrop overlay - closes the drawer when tapped */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
@@ -53,7 +75,7 @@ export function MobileNav() {
         />
       )}
 
-      {/* Mobile Navigation Panel */}
+      {/* Slide-out navigation panel (translates in from the left) */}
       <nav
         className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card shadow-lg transition-transform duration-200 ease-in-out lg:hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
