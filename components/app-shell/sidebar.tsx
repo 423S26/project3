@@ -2,19 +2,21 @@
 
 import {
   Home,
-  Calendar,
-  Heart,
-  DollarSign,
+  MessageSquare,
+  Brain,
+  Activity,
+  ClipboardList,
   Settings,
   Anchor,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 
 const navItems = [
-  { href: "/", label: "Home", icon: <Home className="h-5 w-5" /> },
-  { href: "/schedule", label: "Schedule", icon: <Calendar className="h-5 w-5" /> },
-  { href: "/health", label: "Health", icon: <Heart className="h-5 w-5" /> },
-  { href: "/finance", label: "Finance", icon: <DollarSign className="h-5 w-5" /> },
+  { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
+  { href: "/psychological-state", label: "Psychological State", icon: <Brain className="h-5 w-5" /> },
+  { href: "/physical-state", label: "Physical State", icon: <Activity className="h-5 w-5" /> },
+  { href: "/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
   { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
@@ -22,7 +24,7 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r bg-card lg:flex">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b px-6">
+      <div className="flex h-16 items-center justify-center gap-2 border-b px-6">
         <Anchor className="h-6 w-6 text-primary" />
         <span className="text-lg font-semibold">Anchor</span>
       </div>

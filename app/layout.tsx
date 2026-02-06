@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Anchor - Health & Finance Dashboard",
+  title: "Anchor - Sports Psychology Client App",
   description:
-    "Unified dashboard for managing health, finance, and schedule in one place",
+    "A mental and physical wellbeing tracking platform for sports psychologists and their clients",
 };
 
 export default function RootLayout({

@@ -13,7 +13,8 @@ export interface NavLinkProps {
 
 export function NavLink({ href, children, icon, className }: NavLinkProps) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  // Exact match for home, prefix match for other routes
+  const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <Link
