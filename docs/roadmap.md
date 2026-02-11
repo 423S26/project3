@@ -42,19 +42,21 @@ Anchor is a mental and physical wellbeing tracking platform for sports psycholog
 
 ### Deliverables
 - **Psychological State Page**
-  - Daily check-in form: Mood, Stress, Motivation
-  - Submit + store (local/db)
-  - Calendar "Check-In" event
+  - Daily check-in form: Mood, Stress, Motivation (1–10 scale with emoji per number)
+  - Optional notes; Submit + store in browser localStorage
+  - Calendar "Check-In" event (Mood category)
+  - Latest check-in summary and quick stats on page
 - **Dashboard**
-  - Today panel shows latest psychological state
-  - Filter toggle for Mood
+  - Latest Check-In card in sidebar when Mood filter is on
+  - Today panel merges mock events + stored check-ins; Mood filter toggles visibility
 - Physical State / Fueling: Still stubbed
 - Assessments: Still stubbed
 
 ### Acceptance Criteria
-- User logs a check-in
-- Event appears on calendar
-- Today panel updates
+- User logs a check-in and it persists across refresh
+- Check-In event appears on calendar
+- Dashboard Today sidebar shows latest psychological state (when Mood filter on)
+- Turning off Mood filter hides check-in card and mood events
 
 ---
 

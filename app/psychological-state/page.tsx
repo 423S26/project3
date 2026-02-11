@@ -1,7 +1,17 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Smile, TrendingUp, Zap, Target } from "lucide-react";
+import { Brain, TrendingUp } from "lucide-react";
+import { PsychologicalStateSection } from "@/components/psych/psychological-state-section";
+import { PsychologicalStateStats } from "@/components/psych/psychological-state-stats";
 
-export default function PsychologicalStatePage() {
+interface PageProps {
+  searchParams: Promise<{ date?: string; checkInId?: string }>;
+}
+
+export default async function PsychologicalStatePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const initialDateKey = params.date ?? undefined;
+  const initialFocusCheckInId = params.checkInId ?? undefined;
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -12,68 +22,17 @@ export default function PsychologicalStatePage() {
         </p>
       </div>
 
-      {/* Quick Stats Placeholder */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Today&apos;s Mood</CardTitle>
-            <Smile className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">
-              Check-in available in Sprint 2
-            </p>
-          </CardContent>
-        </Card>
+      {/* Quick Stats - show latest check-in when available */}
+      <PsychologicalStateStats />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Stress Level</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">
-              Tracking in Sprint 2
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Motivation</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">
-              Tracking in Sprint 2
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Check-In Form + Day History + Latest Saved */}
+      <PsychologicalStateSection
+        initialDateKey={initialDateKey}
+        initialFocusCheckInId={initialFocusCheckInId}
+      />
 
       {/* Feature Cards */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-4">
-            <div className="rounded-lg bg-violet-100 p-2 text-violet-600">
-              <Smile className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Daily Check-In</CardTitle>
-              <CardDescription>Log your psychological state</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Coming in Sprint 2: Complete daily check-ins for mood, stress,
-              and motivation. Track patterns over time.
-            </p>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center gap-4">
             <div className="rounded-lg bg-pink-100 p-2 text-pink-600">
@@ -109,7 +68,7 @@ export default function PsychologicalStatePage() {
             <div className="text-center">
               <Brain className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">
-                Psychological state tracking coming in Sprint 2
+                Trend charts coming in Sprint 5
               </p>
             </div>
           </div>

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/auth/user-menu";
+import { AthleteSwitcher } from "@/components/auth/athlete-switcher";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
@@ -63,6 +65,9 @@ export function MobileNav() {
           <Anchor className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">Anchor</span>
         </div>
+        <div className="border-b px-4 py-3">
+          <AthleteSwitcher />
+        </div>
         <div className="space-y-1 p-4">
           {navItems.map((item) => (
             <NavLink
@@ -74,6 +79,9 @@ export function MobileNav() {
               <span onClick={() => setIsOpen(false)}>{item.label}</span>
             </NavLink>
           ))}
+        </div>
+        <div className="border-t p-4">
+          <UserMenu />
         </div>
       </nav>
     </>
