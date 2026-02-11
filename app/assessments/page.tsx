@@ -1,3 +1,9 @@
+/**
+ * Route: /assessments
+ * Wellbeing assessment page for completing structured questionnaires and tracking scores.
+ * Currently displays placeholder content; assessment templates coming in Sprint 3.
+ */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, Calendar, CheckCircle, Clock, FileText } from "lucide-react";
 
