@@ -10,6 +10,8 @@ import {
   Anchor,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
+import { UserMenu } from "@/components/auth/user-menu";
+import { AthleteSwitcher } from "@/components/auth/athlete-switcher";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
@@ -29,6 +31,11 @@ export function Sidebar() {
         <span className="text-lg font-semibold">Anchor</span>
       </div>
 
+      {/* Athlete Switcher (psychologist only) */}
+      <div className="border-b px-4 py-3">
+        <AthleteSwitcher />
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-4">
         {navItems.map((item) => (
@@ -40,9 +47,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t p-4">
-        <p className="text-xs text-muted-foreground">
-          Sprint 1 - ESOF 423
-        </p>
+        <UserMenu />
       </div>
     </aside>
   );

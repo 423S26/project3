@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
+import { SessionProvider } from "@/components/auth/session-provider";
+import { AthleteProvider } from "@/components/auth/athlete-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,7 +24,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AppShell>{children}</AppShell>
+        <SessionProvider>
+          <AthleteProvider>
+            <AppShell>{children}</AppShell>
+          </AthleteProvider>
+        </SessionProvider>
       </body>
     </html>
   );

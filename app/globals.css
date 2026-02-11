@@ -74,7 +74,11 @@
   --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
   --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
   --fc-button-active-border-color: hsl(var(--primary) / 0.8);
-  --fc-today-bg-color: hsl(var(--accent) / 0.3);
+  --fc-today-bg-color: hsl(var(--accent) / 0.5);
+}
+
+.fc .fc-day-today {
+  box-shadow: inset 0 0 0 1px hsl(var(--ring) / 0.25);
 }
 
 .fc .fc-button {
