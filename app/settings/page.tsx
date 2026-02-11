@@ -1,3 +1,9 @@
+/**
+ * Route: /settings
+ * Application settings and preferences page (goals, appearance, profile, notifications, privacy).
+ * Currently displays placeholder content; most settings features coming in Sprint 6.
+ */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Moon, User, Bell, Shield, Download, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";

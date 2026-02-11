@@ -1,3 +1,9 @@
+/**
+ * Route: /physical-state
+ * Physical wellbeing tracking page for recovery, training load, and fueling.
+ * Currently displays placeholder content; recovery/training in Sprint 4, fueling in Sprint 5.
+ */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Battery, Dumbbell, Utensils, Moon, TrendingUp } from "lucide-react";
 

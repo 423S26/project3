@@ -1,3 +1,9 @@
+/**
+ * Route: /sessions
+ * Practitioner session management page for scheduling and reviewing appointments.
+ * Currently displays placeholder content; full functionality coming in Sprint 3.
+ */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Calendar, Video, FileText } from "lucide-react";
 
