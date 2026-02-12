@@ -1,68 +1,80 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/checkins?athleteId=...&date=YYYY-MM-DD
  * Returns check-ins for the active athlete, optionally filtered by date.
  */
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Determine the caller's role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
 
   const { searchParams } = new URL(req.url);
   const dateParam = searchParams.get("date"); // YYYY-MM-DD
   let athleteId: string;
 
-  if (session.user.role === "PSYCHOLOGIST") {
+  if (profile?.role === "PSYCHOLOGIST") {
     const requested = searchParams.get("athleteId");
     if (!requested) {
-      return NextResponse.json({ error: "athleteId required for psychologist" }, { status: 400 });
+      return NextResponse.json(
+        { error: "athleteId required for psychologist" },
+        { status: 400 }
+      );
     }
     athleteId = requested;
   } else {
-    athleteId = session.user.id;
+    athleteId = user.id;
   }
 
-  // Build where clause
-  const where: { athleteId: string; createdAt?: { gte: Date; lte: Date } } = {
-    athleteId,
-  };
+  // Build query
+  let query = supabase
+    .from("check_ins")
+    .select("*")
+    .eq("athlete_id", athleteId)
+    .order("created_at", { ascending: true });
 
   if (dateParam) {
     const [y, m, d] = dateParam.split("-").map(Number);
-    where.createdAt = {
-      gte: new Date(y, m - 1, d, 0, 0, 0, 0),
-      lte: new Date(y, m - 1, d, 23, 59, 59, 999),
-    };
+    const gte = new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+    const lte = new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
+    query = query.gte("created_at", gte).lte("created_at", lte);
   }
 
-  const checkIns = await prisma.checkIn.findMany({
-    where,
-    orderBy: { createdAt: "asc" },
-  });
+  const { data: checkIns, error } = await query;
 
-  // Parse BRUMS JSON fields for the client
-  const result = checkIns.map((ci) => ({
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Transform to match the client-expected shape
+  const result = (checkIns ?? []).map((ci) => ({
     id: ci.id,
-    athleteId: ci.athleteId,
+    athleteId: ci.athlete_id,
     mood: ci.mood,
     stress: ci.stress,
     motivation: ci.motivation,
     notes: ci.notes,
-    brums: ci.brumsJson
+    brums: ci.brums_json
       ? {
           completed: true,
-          items: JSON.parse(ci.brumsJson),
-          subscales: ci.brumsSubscalesJson
-            ? JSON.parse(ci.brumsSubscalesJson)
-            : null,
+          items: ci.brums_json,
+          subscales: ci.brums_subscales_json ?? null,
         }
       : undefined,
-    createdAt: ci.createdAt.toISOString(),
+    createdAt: ci.created_at,
   }));
 
   return NextResponse.json(result);
@@ -73,13 +85,31 @@ export async function GET(req: Request) {
  * Create a new check-in for the authenticated athlete (or specified athlete if psychologist).
  */
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
   const body = await req.json();
-  const { mood, stress, motivation, notes, brums, createdAt, athleteId: bodyAthleteId } = body;
+  const {
+    mood,
+    stress,
+    motivation,
+    notes,
+    brums,
+    createdAt,
+    athleteId: bodyAthleteId,
+  } = body;
 
   // Validate required fields
   if (
@@ -94,31 +124,35 @@ export async function POST(req: Request) {
   }
 
   let athleteId: string;
-  if (session.user.role === "PSYCHOLOGIST") {
-    athleteId = bodyAthleteId ?? session.user.id;
+  if (profile?.role === "PSYCHOLOGIST") {
+    athleteId = bodyAthleteId ?? user.id;
   } else {
-    athleteId = session.user.id;
+    athleteId = user.id;
   }
 
-  const checkIn = await prisma.checkIn.create({
-    data: {
-      athleteId,
+  const { data: checkIn, error } = await supabase
+    .from("check_ins")
+    .insert({
+      athlete_id: athleteId,
       mood,
       stress,
       motivation,
       notes: notes?.trim() || null,
-      brumsJson: brums?.items ? JSON.stringify(brums.items) : null,
-      brumsSubscalesJson: brums?.subscales
-        ? JSON.stringify(brums.subscales)
-        : null,
-      createdAt: createdAt ? new Date(createdAt) : new Date(),
-    },
-  });
+      brums_json: brums?.items ?? null,
+      brums_subscales_json: brums?.subscales ?? null,
+      created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json(
     {
       id: checkIn.id,
-      athleteId: checkIn.athleteId,
+      athleteId: checkIn.athlete_id,
       mood: checkIn.mood,
       stress: checkIn.stress,
       motivation: checkIn.motivation,
@@ -126,7 +160,7 @@ export async function POST(req: Request) {
       brums: brums?.items
         ? { completed: true, items: brums.items, subscales: brums.subscales }
         : undefined,
-      createdAt: checkIn.createdAt.toISOString(),
+      createdAt: checkIn.created_at,
     },
     { status: 201 }
   );

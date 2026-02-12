@@ -1,37 +1,52 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/athletes
  * Returns list of athletes. Only accessible by psychologists.
  */
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.role !== "PSYCHOLOGIST") {
+  // Check role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "PSYCHOLOGIST") {
     return NextResponse.json(
       { error: "Only psychologists can list athletes" },
       { status: 403 }
     );
   }
 
-  const athletes = await prisma.user.findMany({
-    where: { role: "ATHLETE" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      athleteProfile: {
-        select: { sport: true, position: true, team: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+  // Fetch athletes with their athlete profiles
+  const { data: athletes, error } = await supabase
+    .from("profiles")
+    .select("id, name, email, athlete_profiles(sport, position, team)")
+    .eq("role", "ATHLETE")
+    .order("name");
 
-  return NextResponse.json(athletes);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Transform to match the previous API shape: athlete_profiles → athleteProfile
+  const result = (athletes ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    email: a.email,
+    athleteProfile: a.athlete_profiles ?? null,
+  }));
+
+  return NextResponse.json(result);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "./session-provider";
 import { Button } from "@/components/ui/button";
 import { importLocalCheckIns } from "@/lib/checkins-api";
 import { Upload, X } from "lucide-react";
@@ -10,7 +10,7 @@ const STORAGE_KEY = "anchor-psych-checkins";
 const DISMISSED_KEY = "anchor-import-dismissed";
 
 export function LocalStorageImportBanner() {
-  const { data: session } = useSession();
+  const { user } = useSession();
   const [hasLocal, setHasLocal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -18,7 +18,7 @@ export function LocalStorageImportBanner() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (session?.user?.role !== "ATHLETE") return;
+    if (user?.role !== "ATHLETE") return;
     if (localStorage.getItem(DISMISSED_KEY)) {
       setDismissed(true);
       return;
@@ -34,7 +34,7 @@ export function LocalStorageImportBanner() {
     } catch {
       // ignore
     }
-  }, [session]);
+  }, [user]);
 
   if (!hasLocal || dismissed || result) return null;
 

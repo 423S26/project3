@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
+/**
+ * POST /api/auth/register
+ * Server-side registration endpoint (validates input then delegates to
+ * Supabase Auth).  The database trigger `handle_new_user` automatically
+ * creates the profiles + athlete_profiles rows.
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -24,38 +29,23 @@ export async function POST(req: Request) {
     const validRoles = ["ATHLETE", "PSYCHOLOGIST"];
     const userRole = validRoles.includes(role) ? role : "ATHLETE";
 
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({
-      where: { email },
-    });
+    const supabase = await createClient();
 
-    if (existing) {
-      return NextResponse.json(
-        { error: "An account with this email already exists." },
-        { status: 409 }
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        role: userRole,
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, role: userRole },
       },
     });
 
-    // If athlete, also create an AthleteProfile
-    if (userRole === "ATHLETE") {
-      await prisma.athleteProfile.create({
-        data: { userId: user.id },
-      });
+    if (error) {
+      // Supabase returns specific error messages
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json(
-      { message: "Account created successfully.", userId: user.id },
+      { message: "Account created successfully.", userId: data.user?.id },
       { status: 201 }
     );
   } catch (error) {
