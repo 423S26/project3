@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "./session-provider";
 
 interface AthleteContextValue {
   /** The athlete whose data is being viewed */
@@ -22,19 +22,18 @@ const AthleteContext = createContext<AthleteContextValue>({
 });
 
 export function AthleteProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { user, loading: sessionLoading } = useSession();
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
 
-  const isPsychologist = session?.user?.role === "PSYCHOLOGIST";
+  const isPsychologist = user?.role === "PSYCHOLOGIST";
 
   // For athletes, the active athlete is always themselves
   // For psychologists, it's the selected athlete
-  const activeAthleteId =
-    status === "loading"
-      ? null
-      : isPsychologist
-        ? selectedAthleteId
-        : session?.user?.id ?? null;
+  const activeAthleteId = sessionLoading
+    ? null
+    : isPsychologist
+      ? selectedAthleteId
+      : user?.id ?? null;
 
   // Persist psychologist's selection
   useEffect(() => {
@@ -44,15 +43,12 @@ export function AthleteProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isPsychologist]);
 
-  const setActiveAthleteId = useCallback(
-    (id: string) => {
-      setSelectedAthleteId(id);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("anchor-selected-athlete", id);
-      }
-    },
-    []
-  );
+  const setActiveAthleteId = useCallback((id: string) => {
+    setSelectedAthleteId(id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("anchor-selected-athlete", id);
+    }
+  }, []);
 
   return (
     <AthleteContext.Provider
@@ -60,7 +56,7 @@ export function AthleteProvider({ children }: { children: React.ReactNode }) {
         activeAthleteId,
         setActiveAthleteId,
         isPsychologist,
-        loading: status === "loading",
+        loading: sessionLoading,
       }}
     >
       {children}

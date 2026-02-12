@@ -1,24 +1,25 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/browser";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Anchor } from "lucide-react";
 
 const REMEMBERED_EMAIL_KEY = "anchor-remembered-email";
-const AUTH_EXPIRES_KEY = "anchor-auth-expiresAt";
-
-/** 30 days in ms */
-const LONG_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
-/** 8 hours in ms */
-const SHORT_SESSION_MS = 8 * 60 * 60 * 1000;
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,13 +42,12 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        redirect: false,
       });
 
-      if (result?.error) {
+      if (signInError) {
         setError("Invalid email or password.");
       } else {
         // Persist or clear remembered email
@@ -56,13 +56,6 @@ function LoginForm() {
         } else {
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
-
-        // Set session expiry based on Remember me
-        const duration = rememberMe ? LONG_SESSION_MS : SHORT_SESSION_MS;
-        localStorage.setItem(
-          AUTH_EXPIRES_KEY,
-          String(Date.now() + duration)
-        );
 
         router.push(callbackUrl);
         router.refresh();
@@ -125,14 +118,15 @@ function LoginForm() {
               onChange={(e) => setRememberMe(e.target.checked)}
               className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
-            <label htmlFor="remember-me" className="text-sm text-muted-foreground">
+            <label
+              htmlFor="remember-me"
+              className="text-sm text-muted-foreground"
+            >
               Remember me
             </label>
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
@@ -141,7 +135,10 @@ function LoginForm() {
 
         <div className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <a href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+          <a
+            href="/register"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
             Register
           </a>
         </div>

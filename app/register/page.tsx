@@ -1,14 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/browser";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Anchor } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const supabase = createClient();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,38 +30,27 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Registration failed.");
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters.");
+        setLoading(false);
         return;
       }
 
-      // Auto sign-in with the credentials just created
-      const signInResult = await signIn("credentials", {
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        redirect: false,
+        options: {
+          data: { name, role },
+        },
       });
 
-      if (signInResult?.error) {
-        // Account was created but auto sign-in failed — fall back to login page
-        router.push("/login?registered=true");
+      if (signUpError) {
+        setError(signUpError.message);
         return;
       }
 
-      // Set a long session expiry for newly registered users (30 days)
-      const LONG_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(
-        "anchor-auth-expiresAt",
-        String(Date.now() + LONG_SESSION_MS)
-      );
-
+      // Supabase automatically signs the user in after signup
+      // (if email confirmation is disabled, which is the default for dev).
       router.push("/");
       router.refresh();
     } catch {
@@ -148,9 +145,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create Account"}
@@ -159,7 +154,10 @@ export default function RegisterPage() {
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <a href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+            <a
+              href="/login"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
               Sign in
             </a>
           </div>
