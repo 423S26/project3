@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/browser";
 import {
   Card,
   CardContent,
@@ -15,7 +14,6 @@ import { Anchor } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,25 +34,26 @@ export default function RegisterPage() {
         return;
       }
 
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, role },
-        },
+      // Use same-origin API route so the browser never calls Supabase directly.
+      // This avoids "Failed to fetch" on Vercel (CORS / env / network).
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error ?? "Registration failed. Please try again.");
         return;
       }
 
-      // Supabase automatically signs the user in after signup
-      // (if email confirmation is disabled, which is the default for dev).
+      // API route sets session cookies; redirect to dashboard.
       router.push("/");
       router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Network error. Check your connection or try again later.");
     } finally {
       setLoading(false);
     }

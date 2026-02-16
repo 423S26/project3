@@ -44,28 +44,31 @@ Anchor provides a unified, calendar-driven platform where psychological state, p
 
 ## Getting Started
 
-### Prerequisites
+### Try the App
+
+Visit the live site: **[https://anchor-testwebsite.vercel.app/](https://anchor-testwebsite.vercel.app/)**
+
+Register as an Athlete or Psychologist to explore all features.
+
+### Local Development
+
+If you want to run the project locally:
+
+**Prerequisites**
 
 - Node.js 18.17 or later
 - npm, yarn, or pnpm
 - A [Supabase](https://supabase.com) project
 
-### Installation
+**Setup**
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/423S26/project3.git
-cd project3
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Copy the environment file and fill in your Supabase values:
+2. Copy the environment file and fill in your Supabase values:
 
 ```bash
 cp .env.example .env.local
@@ -79,51 +82,39 @@ Required environment variables:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon / public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (server only) |
 
-4. Run the database migration in the Supabase SQL Editor:
+3. Run the database migration in the Supabase SQL Editor:
 
 ```
 supabase/migrations/001_init.sql
 ```
 
-5. Start the development server:
+4. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Project Structure
+### Deploying to Vercel (fixing "Failed to fetch" on sign-up)
 
-```
-├── app/                        # Next.js App Router pages & API routes
-│   ├── layout.tsx              # Root layout with navigation
-│   ├── page.tsx                # Dashboard (Calendar)
-│   ├── login/                  # Login page
-│   ├── register/               # Registration page (role selection)
-│   ├── sessions/               # Practitioner sessions
-│   ├── psychological-state/    # Mood, stress, motivation check-ins
-│   ├── physical-state/         # Recovery, training, fueling
-│   ├── assessments/            # Wellbeing assessments
-│   ├── settings/               # User preferences & privacy
-│   └── api/                    # API routes (auth, check-ins, athletes)
-├── components/
-│   ├── app-shell/              # Navigation & layout components
-│   ├── auth/                   # Auth context, session provider, user menu
-│   ├── calendar/               # Calendar & event components
-│   ├── psych/                  # Check-in form, latest card, stats
-│   └── ui/                     # shadcn/ui base components
-├── lib/
-│   ├── supabase/               # Supabase client (browser + server)
-│   ├── auth-helpers.ts         # Auth utility functions
-│   ├── event-types.ts          # Event type definitions
-│   ├── mock-events.ts          # Mock event data
-│   └── utils.ts                # Utility functions
-├── supabase/
-│   └── migrations/             # SQL migrations (001_init.sql)
-├── scripts/                    # One-off utilities (SQLite migration)
-└── docs/                       # Sprint documentation
-```
+If registration works locally but fails on Vercel with **"Failed to fetch"**, do the following:
+
+1. **Set environment variables in Vercel**  
+   In your Vercel project: **Settings → Environment Variables**, add:
+   - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL (e.g. `https://xxxx.supabase.co`)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon/public key  
+   Use the same values as in `.env.local`. Apply to **Production** (and Preview if you use it).
+
+2. **Redeploy after adding env vars**  
+   `NEXT_PUBLIC_*` variables are inlined at **build** time. After adding or changing them, trigger a new deployment (e.g. push a commit or use "Redeploy" in Vercel).
+
+3. **Allow your Vercel URL in Supabase Auth**  
+   In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Authentication → URL Configuration**:
+   - **Site URL**: set to your production URL (e.g. `https://your-app.vercel.app`)
+   - **Redirect URLs**: add `https://your-app.vercel.app/**` (and `https://your-app.vercel.app` if you use it)
+
+Without (1) and (2), the browser tries to call Supabase with a missing URL and you get "Failed to fetch". Without (3), auth can be blocked or redirects can fail.
 
 ## Core Features
 
