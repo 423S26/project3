@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/athletes
- * Returns list of athletes. Only accessible by psychologists.
+ * Returns list of athletes assigned to the requesting psychologist.
+ * RLS policies automatically filter to only assigned athletes.
+ * Only accessible by psychologists.
  */
 export async function GET() {
   const supabase = await createClient();

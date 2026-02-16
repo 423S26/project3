@@ -6,8 +6,8 @@ import { useSession } from "./session-provider";
 interface AthleteContextValue {
   /** The athlete whose data is being viewed */
   activeAthleteId: string | null;
-  /** Set the active athlete (psychologist only) */
-  setActiveAthleteId: (id: string) => void;
+  /** Set the active athlete (psychologist only); pass null to view all */
+  setActiveAthleteId: (id: string | null) => void;
   /** Whether the current user is a psychologist */
   isPsychologist: boolean;
   /** Loading state */
@@ -43,10 +43,14 @@ export function AthleteProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isPsychologist]);
 
-  const setActiveAthleteId = useCallback((id: string) => {
+  const setActiveAthleteId = useCallback((id: string | null) => {
     setSelectedAthleteId(id);
     if (typeof window !== "undefined") {
-      localStorage.setItem("anchor-selected-athlete", id);
+      if (id === null) {
+        localStorage.removeItem("anchor-selected-athlete");
+      } else {
+        localStorage.setItem("anchor-selected-athlete", id);
+      }
     }
   }, []);
 
