@@ -131,7 +131,7 @@ export async function POST(req: Request) {
       const { data: athleteProfile } = await serviceSupabase
         .from("profiles")
         .select("id")
-        .eq("email", body.athleteEmail.toLowerCase().trim())
+        .ilike("email", body.athleteEmail.trim())
         .eq("role", "ATHLETE")
         .single();
 

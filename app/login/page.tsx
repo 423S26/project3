@@ -43,7 +43,7 @@ function LoginForm() {
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.toLowerCase().trim(),
         password,
       });
 
