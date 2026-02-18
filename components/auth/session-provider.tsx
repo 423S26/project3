@@ -42,9 +42,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** Fetch the profile row for a given auth uid. */
+  /** Fetch the profile row for a given auth uid. Falls back to auth user if profile missing. */
   const loadProfile = useCallback(
-    async (uid: string) => {
+    async (uid: string, authUser?: { id: string; email?: string; user_metadata?: Record<string, unknown> }) => {
       const { data } = await supabase
         .from("profiles")
         .select("id, email, name, role")
@@ -52,6 +52,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         .single();
       if (data) {
         setUser(data as UserProfile);
+      } else if (authUser) {
+        // Profile missing (e.g. RLS or timing) — keep menu visible with fallback so sign out works
+        setUser({
+          id: authUser.id,
+          email: authUser.email ?? "",
+          name: (authUser.user_metadata?.name as string) ?? "User",
+          role: "ATHLETE",
+        });
       } else {
         setUser(null);
       }
@@ -64,30 +72,34 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       data: { user: authUser },
     } = await supabase.auth.getUser();
     if (authUser) {
-      await loadProfile(authUser.id);
+      await loadProfile(authUser.id, authUser);
+    } else {
+      setUser(null);
     }
   }, [supabase, loadProfile]);
 
   useEffect(() => {
-    // 1. Check the current session on mount
+    // 1. Restore session from cookies on mount (refresh)
     const init = async () => {
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
       if (authUser) {
-        await loadProfile(authUser.id);
+        await loadProfile(authUser.id, authUser);
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
     init();
 
-    // 2. Listen for sign-in / sign-out events
+    // 2. Only clear user on explicit sign out; ignore brief null session on refresh
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await loadProfile(session.user.id);
-      } else {
+        await loadProfile(session.user.id, session.user);
+      } else if (event === "SIGNED_OUT") {
         setUser(null);
       }
       setLoading(false);

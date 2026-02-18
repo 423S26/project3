@@ -54,7 +54,7 @@ const psychologistNavItems = [
 
 /** Mobile header bar + slide-out navigation drawer. Hidden on lg+ screens. */
 export function MobileNav() {
-  const { user } = useSession();
+  const { user, loading } = useSession();
   const isPsychologist = user?.role === "PSYCHOLOGIST";
   const navItems = isPsychologist ? psychologistNavItems : athleteNavItems;
   const [isOpen, setIsOpen] = useState(false);
@@ -97,23 +97,29 @@ export function MobileNav() {
         </div>
         
         {/* Psychologist: Caseload List | Athlete: Nothing here */}
-        {isPsychologist && (
+        {!loading && isPsychologist && (
           <div className="border-b">
             <CaseloadList />
           </div>
         )}
         
         <div className="space-y-1 p-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              icon={item.icon}
-              className="w-full"
-            >
-              <span onClick={() => setIsOpen(false)}>{item.label}</span>
-            </NavLink>
-          ))}
+          {loading ? (
+            <div className="rounded-lg px-3 py-2 text-sm text-muted-foreground">
+              Loading…
+            </div>
+          ) : (
+            navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                className="w-full"
+              >
+                <span onClick={() => setIsOpen(false)}>{item.label}</span>
+              </NavLink>
+            ))
+          )}
         </div>
         <div className="border-t p-4">
           <UserMenu />

@@ -47,7 +47,7 @@ const psychologistNavItems = [
 
 /** Desktop sidebar with logo, nav links, and user menu. */
 export function Sidebar() {
-  const { user } = useSession();
+  const { user, loading } = useSession();
   const isPsychologist = user?.role === "PSYCHOLOGIST";
   const navItems = isPsychologist ? psychologistNavItems : athleteNavItems;
 
@@ -60,19 +60,25 @@ export function Sidebar() {
       </div>
 
       {/* Psychologist: Caseload List | Athlete: Nothing here */}
-      {isPsychologist && (
+      {!loading && isPsychologist && (
         <div className="border-b">
           <CaseloadList />
         </div>
       )}
 
-      {/* Primary navigation links */}
+      {/* Primary navigation links - wait for session so role-specific tabs don't flash */}
       <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => (
-          <NavLink key={item.href} href={item.href} icon={item.icon}>
-            {item.label}
-          </NavLink>
-        ))}
+        {loading ? (
+          <div className="rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            Loading…
+          </div>
+        ) : (
+          navItems.map((item) => (
+            <NavLink key={item.href} href={item.href} icon={item.icon}>
+              {item.label}
+            </NavLink>
+          ))
+        )}
       </nav>
 
       {/* Footer - user menu */}

@@ -36,7 +36,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // If no user and not on a public route, redirect to login
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname.startsWith("/login") ||
@@ -47,6 +46,20 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // Psychologists hitting / should always see their dashboard (avoids athlete view on refresh)
+  if (user && pathname === "/") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role === "PSYCHOLOGIST") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/psychologist";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
