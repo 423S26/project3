@@ -79,21 +79,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [supabase, loadProfile]);
 
   useEffect(() => {
-    // 1. Restore session from cookies on mount (refresh)
     const init = async () => {
+      // 1. Fast path: getSession() reads from local storage (instant, no network).
+      //    Use it to render the UI immediately with the correct role.
       const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (authUser) {
-        await loadProfile(authUser.id, authUser);
-      } else {
-        setUser(null);
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id, session.user);
       }
       setLoading(false);
+
+      // 2. Slow path: getUser() validates the token with Supabase (network call).
+      //    If the token is expired or invalid, clear the user.
+      const {
+        data: { user: verifiedUser },
+      } = await supabase.auth.getUser();
+      if (verifiedUser) {
+        await loadProfile(verifiedUser.id, verifiedUser);
+      } else if (!session?.user) {
+        setUser(null);
+      }
     };
     init();
 
-    // 2. Only clear user on explicit sign out; ignore brief null session on refresh
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
