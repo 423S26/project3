@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     // Psychologist assigning an athlete to themselves
     let athleteId = body.athleteId;
 
-    // If athleteEmail provided, look up athlete by email using service role
+    // If athleteEmail provided, look up athlete by email (profiles first, then auth.users)
     if (!athleteId && body.athleteEmail) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!serviceRoleKey) {
@@ -128,21 +128,52 @@ export async function POST(req: Request) {
         serviceRoleKey
       );
 
-      const { data: athleteProfile } = await serviceSupabase
+      const emailNorm = body.athleteEmail.trim().toLowerCase();
+
+      let athleteProfile = await serviceSupabase
         .from("profiles")
         .select("id")
-        .ilike("email", body.athleteEmail.trim())
+        .ilike("email", emailNorm)
         .eq("role", "ATHLETE")
-        .single();
+        .maybeSingle()
+        .then((r) => r.data);
 
-      if (!athleteProfile) {
+      if (!athleteProfile?.id) {
+        // Not in profiles — may exist only in auth.users (e.g. created in dashboard or trigger missed)
+        const { data: list } = await serviceSupabase.auth.admin.listUsers({
+          perPage: 1000,
+        });
+        const authUser = list?.users?.find(
+          (u) => u.email?.toLowerCase() === emailNorm
+        );
+        if (authUser) {
+          // Ensure profile and athlete_profile exist
+          await serviceSupabase.from("profiles").upsert(
+            {
+              id: authUser.id,
+              email: authUser.email ?? emailNorm,
+              name:
+                (authUser.user_metadata?.name as string) ?? authUser.email ?? "User",
+              role: "ATHLETE",
+            },
+            { onConflict: "id" }
+          );
+          await serviceSupabase.from("athlete_profiles").upsert(
+            { user_id: authUser.id },
+            { onConflict: "user_id" }
+          );
+          athleteId = authUser.id;
+        }
+      } else {
+        athleteId = athleteProfile.id;
+      }
+
+      if (!athleteId) {
         return NextResponse.json(
           { error: "Athlete not found with that email" },
           { status: 404 }
         );
       }
-
-      athleteId = athleteProfile.id;
     }
 
     if (!athleteId) {
