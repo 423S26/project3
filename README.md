@@ -163,6 +163,7 @@ Without (1) and (2), the browser tries to call Supabase with a missing URL and y
 | [Sprint 1](docs/sprint-1.md) | Application skeleton, navigation, dashboard calendar with mock data |
 | [Sprint 2](docs/sprint-2.md) | Psychological check-ins, Supabase auth, role-based access |
 | [Roadmap](docs/roadmap.md) | Full 6-sprint development plan |
+| [Usability Test Playbook](docs/usability-test-playbook.md) | Team observation guide: sticking points, misconceptions, doc holes, user questions |
 
 ---
 

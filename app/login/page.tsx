@@ -142,6 +142,15 @@ function LoginForm() {
             Register
           </a>
         </div>
+
+        <div className="mt-3 text-center">
+          <a
+            href="/feedback?from=/login"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Having trouble? Submit feedback
+          </a>
+        </div>
       </CardContent>
     </Card>
   );
