@@ -11,6 +11,9 @@ import { toLocalDateKey, todayDateKey } from "@/lib/psych-checkins";
 import { useAthlete } from "@/components/auth/athlete-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import {
   Users,
   Activity,
@@ -21,6 +24,7 @@ import {
   Zap,
   Target,
   CalendarDays,
+  HelpCircle,
 } from "lucide-react";
 import { EMOJI_SCALE } from "@/lib/emoji-scale";
 
@@ -219,16 +223,22 @@ export function PsychologistDashboard() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your athletes and their wellbeing
-        </p>
-        {activeAthleteId && (
-          <p className="mt-1 text-sm text-primary">
-            Filtering by selected athlete
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Overview of your athletes and their wellbeing
           </p>
-        )}
+          {activeAthleteId && (
+            <p className="mt-1 text-sm text-primary">
+              Filtering by selected athlete
+            </p>
+          )}
+        </div>
+        <Link href="/help" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+          <HelpCircle className="h-4 w-4" />
+          Help?
+        </Link>
       </div>
 
       {/* Quick Stats */}
