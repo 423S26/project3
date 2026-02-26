@@ -5,10 +5,13 @@
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Moon, User, Bell, Shield, Download, Target } from "lucide-react";
+import { Settings, Moon, User, Bell, Shield, Download, Target, MessageSquarePlus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getAuthUser } from "@/lib/supabase/server";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getAuthUser();
+  const isPsychologist = user?.role === "PSYCHOLOGIST";
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -122,6 +125,55 @@ export default function SettingsPage() {
                 Coming Soon
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Feedback */}
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="rounded-lg bg-teal-100 p-2 text-teal-600">
+              <MessageSquarePlus className="h-6 w-6" />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg">Feedback</CardTitle>
+              <CardDescription>
+                Help the team spot sticking points, unclear interfaces, and missing documentation
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Submit Feedback</p>
+                <p className="text-sm text-muted-foreground">
+                  Report something confusing, broken, or missing
+                </p>
+              </div>
+              <a
+                href="/feedback?from=/settings"
+                className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Form
+              </a>
+            </div>
+            {isPsychologist && (
+              <div className="flex items-center justify-between border-t pt-3">
+                <div>
+                  <p className="font-medium">Feedback Reports</p>
+                  <p className="text-sm text-muted-foreground">
+                    Review all user-submitted feedback
+                  </p>
+                </div>
+                <a
+                  href="/psychologist/feedback"
+                  className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Reports
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
 

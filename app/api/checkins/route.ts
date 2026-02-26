@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * GET /api/checkins?athleteId=...&date=YYYY-MM-DD
  * Returns check-ins for the active athlete, optionally filtered by date.
+ * RLS policies automatically enforce that psychologists can only access
+ * check-ins for assigned athletes.
  */
 export async function GET(req: Request) {
   const supabase = await createClient();

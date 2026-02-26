@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { CalendarView } from "./calendar-view";
 import { CalendarFilters } from "./calendar-filters";
 import { TodayPanel } from "./today-panel";
 import { LatestCheckInCard } from "@/components/psych/latest-checkin-card";
+import { buttonVariants } from "@/components/ui/button";
 import { EventCategory, getDefaultFilters } from "@/lib/event-types";
 import { getTodaysEvents } from "@/lib/mock-events";
 import { toCheckInCalendarEvent, toLocalDateKey, type PsychCheckIn } from "@/lib/psych-checkins";
 import { fetchCheckIns, fetchCheckInsForDate } from "@/lib/checkins-api";
 import { useAthlete } from "@/components/auth/athlete-context";
+import { HelpCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type ViewType = "dayGridMonth" | "timeGridWeek";
 
@@ -87,11 +91,17 @@ export function HomeDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Your unified view of training, recovery, and wellbeing
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Your unified view of training, recovery, and wellbeing
+          </p>
+        </div>
+        <Link href="/help" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+          <HelpCircle className="h-4 w-4" />
+          Help?
+        </Link>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

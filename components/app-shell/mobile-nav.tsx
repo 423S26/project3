@@ -1,17 +1,15 @@
 /**
  * MobileNav - Responsive navigation for small screens (below the lg breakpoint).
  *
+ * Role-aware navigation:
+ * - Athletes: standard tab navigation
+ * - Psychologists: caseload list + dashboard link
+ *
  * Consists of three pieces:
  *   1. A sticky header bar with the Anchor logo and a hamburger/close toggle.
  *   2. A semi-transparent backdrop overlay that closes the drawer on tap.
  *   3. A slide-out navigation panel (same 256px width as the desktop sidebar)
  *      that animates in from the left via CSS transform.
- *
- * The open/closed state is managed with local `useState`. Clicking a nav label
- * or the overlay automatically closes the drawer.
- *
- * NOTE: `navItems` is duplicated from sidebar.tsx. Keep both arrays in sync
- * when adding or removing routes.
  */
 
 "use client";
@@ -31,13 +29,13 @@ import {
 import { NavLink } from "./nav-link";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/user-menu";
-import { AthleteSwitcher } from "@/components/auth/athlete-switcher";
+import { CaseloadList } from "@/components/psychologist/caseload-list";
+import { useSession } from "@/components/auth/session-provider";
 
 /**
- * Navigation items for the mobile drawer.
- * Mirrors the desktop sidebar's `navItems` array.
+ * Athlete navigation items.
  */
-const navItems = [
+const athleteNavItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
   { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
   { href: "/psychological-state", label: "Psychological State", icon: <Brain className="h-5 w-5" /> },
@@ -46,9 +44,19 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
+/**
+ * Psychologist navigation items.
+ */
+const psychologistNavItems = [
+  { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
+];
+
 /** Mobile header bar + slide-out navigation drawer. Hidden on lg+ screens. */
 export function MobileNav() {
-  /** Controls whether the slide-out drawer is visible. */
+  const { user, loading } = useSession();
+  const isPsychologist = user?.role === "PSYCHOLOGIST";
+  const navItems = isPsychologist ? psychologistNavItems : athleteNavItems;
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -87,20 +95,31 @@ export function MobileNav() {
           <Anchor className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">Anchor</span>
         </div>
-        <div className="border-b px-4 py-3">
-          <AthleteSwitcher />
-        </div>
+        
+        {/* Psychologist: Caseload List | Athlete: Nothing here */}
+        {!loading && isPsychologist && (
+          <div className="border-b">
+            <CaseloadList />
+          </div>
+        )}
+        
         <div className="space-y-1 p-4">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              icon={item.icon}
-              className="w-full"
-            >
-              <span onClick={() => setIsOpen(false)}>{item.label}</span>
-            </NavLink>
-          ))}
+          {loading ? (
+            <div className="rounded-lg px-3 py-2 text-sm text-muted-foreground">
+              Loading…
+            </div>
+          ) : (
+            navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                className="w-full"
+              >
+                <span onClick={() => setIsOpen(false)}>{item.label}</span>
+              </NavLink>
+            ))
+          )}
         </div>
         <div className="border-t p-4">
           <UserMenu />

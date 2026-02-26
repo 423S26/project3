@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.toLowerCase().trim(),
       password,
       options: {
         data: { name, role: userRole },

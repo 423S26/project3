@@ -42,9 +42,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** Fetch the profile row for a given auth uid. */
+  /** Fetch the profile row for a given auth uid. Falls back to auth user if profile missing. */
   const loadProfile = useCallback(
-    async (uid: string) => {
+    async (uid: string, authUser?: { id: string; email?: string; user_metadata?: Record<string, unknown> }) => {
       const { data } = await supabase
         .from("profiles")
         .select("id, email, name, role")
@@ -52,6 +52,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         .single();
       if (data) {
         setUser(data as UserProfile);
+      } else if (authUser) {
+        // Profile missing (e.g. RLS or timing) — keep menu visible with fallback so sign out works
+        setUser({
+          id: authUser.id,
+          email: authUser.email ?? "",
+          name: (authUser.user_metadata?.name as string) ?? "User",
+          role: "ATHLETE",
+        });
       } else {
         setUser(null);
       }
@@ -64,30 +72,43 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       data: { user: authUser },
     } = await supabase.auth.getUser();
     if (authUser) {
-      await loadProfile(authUser.id);
+      await loadProfile(authUser.id, authUser);
+    } else {
+      setUser(null);
     }
   }, [supabase, loadProfile]);
 
   useEffect(() => {
-    // 1. Check the current session on mount
     const init = async () => {
+      // 1. Fast path: getSession() reads from local storage (instant, no network).
+      //    Use it to render the UI immediately with the correct role.
       const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (authUser) {
-        await loadProfile(authUser.id);
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id, session.user);
       }
       setLoading(false);
+
+      // 2. Slow path: getUser() validates the token with Supabase (network call).
+      //    If the token is expired or invalid, clear the user.
+      const {
+        data: { user: verifiedUser },
+      } = await supabase.auth.getUser();
+      if (verifiedUser) {
+        await loadProfile(verifiedUser.id, verifiedUser);
+      } else if (!session?.user) {
+        setUser(null);
+      }
     };
     init();
 
-    // 2. Listen for sign-in / sign-out events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await loadProfile(session.user.id);
-      } else {
+        await loadProfile(session.user.id, session.user);
+      } else if (event === "SIGNED_OUT") {
         setUser(null);
       }
       setLoading(false);

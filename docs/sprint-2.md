@@ -24,11 +24,11 @@ By the end of **Week 4**, users can **log a daily psychological check-in** (Mood
 - Stored check-ins appear as "Check-In" events in the **Mood** category
 - Calendar event list merges mock events + check-in events; Mood filter controls visibility
 
-### Not in Scope (Sprint 2)
-- Authentication / multi-user
-- Backend database
+### Not in Scope (Sprint 2 original plan)
 - Trend charts
 - Sessions or assessments UI
+
+> **Note:** Authentication (Supabase Auth with PKCE) and a backend database (Supabase Postgres) were implemented alongside Sprint 2 and are fully shipped. See `supabase/migrations/` for the schema and `app/api/auth/` for the auth routes.
 
 ---
 

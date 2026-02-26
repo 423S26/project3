@@ -43,7 +43,7 @@ function LoginForm() {
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.toLowerCase().trim(),
         password,
       });
 
@@ -140,6 +140,15 @@ function LoginForm() {
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Register
+          </a>
+        </div>
+
+        <div className="mt-3 text-center">
+          <a
+            href="/feedback?from=/login"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Having trouble? Submit feedback
           </a>
         </div>
       </CardContent>

@@ -30,6 +30,8 @@ interface CalendarViewProps {
     classNames: string[];
     extendedProps: { category: string; description?: string; metadata?: Record<string, unknown> };
   }>;
+  /** Optional custom event click handler. If provided, overrides default navigation. */
+  onEventClick?: (info: EventClickArg) => void;
 }
 
 /** Map event category to target page path */
@@ -41,7 +43,7 @@ const CATEGORY_ROUTE_MAP: Record<EventCategory, string> = {
   assessments: "/assessments",
 };
 
-export function CalendarView({ view, onViewChange, filters, checkInEvents = [] }: CalendarViewProps) {
+export function CalendarView({ view, onViewChange, filters, checkInEvents = [], onEventClick: customEventClick }: CalendarViewProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const router = useRouter();
 
@@ -136,7 +138,7 @@ export function CalendarView({ view, onViewChange, filters, checkInEvents = [] }
           nowIndicator={true}
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
-          eventClick={handleEventClick}
+          eventClick={customEventClick ?? handleEventClick}
         />
       </div>
     </Card>

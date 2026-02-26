@@ -1,22 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "./session-provider";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export function UserMenu() {
   const { user, supabase } = useSession();
-  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   if (!user) return null;
 
   const roleLabel = user.role === "PSYCHOLOGIST" ? "Psychologist" : "Athlete";
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      // Full page redirect so server sees cleared cookies and nav doesn't flicker
+      window.location.href = "/login";
+    } catch {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -35,9 +41,10 @@ export function UserMenu() {
         size="sm"
         className="w-full"
         onClick={handleSignOut}
+        disabled={signingOut}
       >
         <LogOut className="mr-2 h-3.5 w-3.5" />
-        Sign Out
+        {signingOut ? "Signing out…" : "Sign Out"}
       </Button>
     </div>
   );

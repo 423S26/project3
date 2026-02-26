@@ -1,12 +1,11 @@
 /**
  * Sidebar - Fixed desktop navigation panel (visible at the lg breakpoint and above).
  *
- * Renders the Anchor logo, the primary navigation links, and a sprint footer.
+ * Renders the Anchor logo, role-specific navigation, and user menu.
+ * - Athletes: standard tab navigation + dashboard
+ * - Psychologists: caseload athlete list + dashboard link
  * Hidden on mobile via `hidden lg:flex`; on small screens the MobileNav
  * component provides an equivalent slide-out drawer instead.
- *
- * NOTE: `navItems` is defined locally here (and duplicated in mobile-nav.tsx).
- * If the navigation structure changes, both arrays must be updated in sync.
  */
 
 "use client";
@@ -19,16 +18,17 @@ import {
   ClipboardList,
   Settings,
   Anchor,
+  Users,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { UserMenu } from "@/components/auth/user-menu";
-import { AthleteSwitcher } from "@/components/auth/athlete-switcher";
+import { CaseloadList } from "@/components/psychologist/caseload-list";
+import { useSession } from "@/components/auth/session-provider";
 
 /**
- * Navigation items rendered in the sidebar.
- * Each entry maps a route (`href`) to a human-readable label and Lucide icon.
+ * Athlete navigation items.
  */
-const navItems = [
+const athleteNavItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
   { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
   { href: "/psychological-state", label: "Psychological State", icon: <Brain className="h-5 w-5" /> },
@@ -37,8 +37,20 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
-/** Desktop sidebar with logo, nav links, and sprint footer. */
+/**
+ * Psychologist navigation items.
+ */
+const psychologistNavItems = [
+  { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
+];
+
+/** Desktop sidebar with logo, nav links, and user menu. */
 export function Sidebar() {
+  const { user, loading } = useSession();
+  const isPsychologist = user?.role === "PSYCHOLOGIST";
+  const navItems = isPsychologist ? psychologistNavItems : athleteNavItems;
+
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r bg-card lg:flex">
       {/* Logo / brand mark */}
@@ -47,21 +59,29 @@ export function Sidebar() {
         <span className="text-lg font-semibold">Anchor</span>
       </div>
 
-      {/* Athlete Switcher (psychologist only) */}
-      <div className="border-b px-4 py-3">
-        <AthleteSwitcher />
-      </div>
+      {/* Psychologist: Caseload List | Athlete: Nothing here */}
+      {!loading && isPsychologist && (
+        <div className="border-b">
+          <CaseloadList />
+        </div>
+      )}
 
-      {/* Primary navigation links */}
+      {/* Primary navigation links - wait for session so role-specific tabs don't flash */}
       <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => (
-          <NavLink key={item.href} href={item.href} icon={item.icon}>
-            {item.label}
-          </NavLink>
-        ))}
+        {loading ? (
+          <div className="rounded-lg px-3 py-2 text-sm text-muted-foreground">
+            Loading…
+          </div>
+        ) : (
+          navItems.map((item) => (
+            <NavLink key={item.href} href={item.href} icon={item.icon}>
+              {item.label}
+            </NavLink>
+          ))
+        )}
       </nav>
 
-      {/* Footer - displays the current sprint / course identifier */}
+      {/* Footer - user menu */}
       <div className="border-t p-4">
         <UserMenu />
       </div>
