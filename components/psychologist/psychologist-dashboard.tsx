@@ -289,7 +289,7 @@ export function PsychologistDashboard() {
           view={view}
           onViewChange={setView}
           filters={filters}
-          checkInEvents={checkInCalendarEvents}
+          dbEvents={checkInCalendarEvents}
           onEventClick={handleCalendarEventClick}
         />
 

@@ -40,6 +40,7 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
+    pathname.startsWith("/landing") ||
     pathname.startsWith("/feedback") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/feedback");

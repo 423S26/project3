@@ -26,7 +26,7 @@ interface AppShellProps {
 }
 
 /** Pages that should render WITHOUT the navigation shell */
-const AUTH_PATHS = ["/login", "/register"];
+const AUTH_PATHS = ["/login", "/register", "/landing"];
 
 /**
  * Renders the application shell: sidebar, mobile nav, and the main content area.

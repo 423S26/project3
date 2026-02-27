@@ -1,7 +1,7 @@
 /**
  * Route: /assessments
  * Wellbeing assessment page for completing structured questionnaires and tracking scores.
- * Currently displays placeholder content; assessment templates coming in Sprint 3.
+ * Currently displays placeholder content; assessment templates coming in Sprint 4.
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export default function AssessmentsPage() {
           <CardContent>
             <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              Assessments in Sprint 3
+              Assessments in Sprint 4
             </p>
           </CardContent>
         </Card>
@@ -54,7 +54,7 @@ export default function AssessmentsPage() {
           <CardContent>
             <div className="text-2xl font-bold">--</div>
             <p className="text-xs text-muted-foreground">
-              Scheduling in Sprint 3
+              Scheduling in Sprint 4
             </p>
           </CardContent>
         </Card>
@@ -74,7 +74,7 @@ export default function AssessmentsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Coming in Sprint 3: Complete weekly wellbeing assessments to track
+              Coming in Sprint 4: Complete weekly wellbeing assessments to track
               your overall mental and physical state over time.
             </p>
           </CardContent>
@@ -92,7 +92,7 @@ export default function AssessmentsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Coming in Sprint 3: Assess your readiness before important events
+              Coming in Sprint 4: Assess your readiness before important events
               or competitions with structured questionnaires.
             </p>
           </CardContent>
@@ -115,7 +115,7 @@ export default function AssessmentsPage() {
             <div className="text-center">
               <ClipboardList className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">
-                Assessment templates coming in Sprint 3
+                Assessment templates coming in Sprint 4
               </p>
             </div>
           </div>

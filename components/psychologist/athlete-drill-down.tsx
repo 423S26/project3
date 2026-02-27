@@ -215,7 +215,7 @@ export function AthleteDrillDown({
         view={view}
         onViewChange={setView}
         filters={filters}
-        checkInEvents={checkInCalendarEvents}
+        dbEvents={checkInCalendarEvents}
         onEventClick={handleEventClick}
       />
 

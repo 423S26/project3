@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { CalendarView } from "./calendar-view";
 import { CalendarFilters } from "./calendar-filters";
 import { TodayPanel } from "./today-panel";
 import { LatestCheckInCard } from "@/components/psych/latest-checkin-card";
 import { buttonVariants } from "@/components/ui/button";
-import { EventCategory, getDefaultFilters } from "@/lib/event-types";
+import { EventCategory, AnchorEvent, getDefaultFilters } from "@/lib/event-types";
 import { getTodaysEvents } from "@/lib/mock-events";
-import { toCheckInCalendarEvent, toLocalDateKey, type PsychCheckIn } from "@/lib/psych-checkins";
-import { fetchCheckIns, fetchCheckInsForDate } from "@/lib/checkins-api";
+import { toLocalDateKey } from "@/lib/psych-checkins";
+import { fetchEvents } from "@/lib/physical-state-api";
+import { toFullCalendarEvent } from "@/lib/mock-events";
 import { useAthlete } from "@/components/auth/athlete-context";
 import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,38 +22,45 @@ export function HomeDashboard() {
   const { activeAthleteId, isPsychologist } = useAthlete();
   const [view, setView] = useState<ViewType>("dayGridMonth");
   const [filters, setFilters] = useState(getDefaultFilters());
-  const [allCheckIns, setAllCheckIns] = useState<PsychCheckIn[]>([]);
-  const [todayCheckIns, setTodayCheckIns] = useState<PsychCheckIn[]>([]);
+  const [dbEvents, setDbEvents] = useState<AnchorEvent[]>([]);
 
   const athleteParam = isPsychologist ? activeAthleteId ?? undefined : undefined;
 
-  // Fetch check-ins from API
-  useEffect(() => {
-    if (!activeAthleteId) return;
-    const load = async () => {
-      const [all, today] = await Promise.all([
-        fetchCheckIns(athleteParam),
-        fetchCheckInsForDate(toLocalDateKey(new Date()), athleteParam),
-      ]);
-      setAllCheckIns(all);
-      setTodayCheckIns(today);
+  // Compute a wide date range for fetching (3 months back, 2 months forward)
+  const getDateRange = useCallback(() => {
+    const now = new Date();
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - 3);
+    const to = new Date(now);
+    to.setMonth(to.getMonth() + 2);
+    return {
+      from: toLocalDateKey(from),
+      to: toLocalDateKey(to),
     };
-    load();
-  }, [activeAthleteId, athleteParam]);
+  }, []);
 
-  // Refresh on check-in saved
+  // Fetch unified events from API (recovery, workouts, meals, check-ins)
+  const loadEvents = useCallback(async () => {
+    if (!activeAthleteId) return;
+    const { from, to } = getDateRange();
+    const events = await fetchEvents(from, to, athleteParam);
+    setDbEvents(events);
+  }, [activeAthleteId, athleteParam, getDateRange]);
+
   useEffect(() => {
-    const onSaved = async () => {
-      const [all, today] = await Promise.all([
-        fetchCheckIns(athleteParam),
-        fetchCheckInsForDate(toLocalDateKey(new Date()), athleteParam),
-      ]);
-      setAllCheckIns(all);
-      setTodayCheckIns(today);
-    };
+    loadEvents();
+  }, [loadEvents]);
+
+  // Refresh on check-in saved (or any physical-state data saved)
+  useEffect(() => {
+    const onSaved = () => { loadEvents(); };
     window.addEventListener("anchor-checkin-saved", onSaved);
-    return () => window.removeEventListener("anchor-checkin-saved", onSaved);
-  }, [athleteParam]);
+    window.addEventListener("anchor-physical-state-saved", onSaved);
+    return () => {
+      window.removeEventListener("anchor-checkin-saved", onSaved);
+      window.removeEventListener("anchor-physical-state-saved", onSaved);
+    };
+  }, [loadEvents]);
 
   const handleFilterChange = (category: EventCategory, enabled: boolean) => {
     setFilters((prev) => ({
@@ -61,31 +69,19 @@ export function HomeDashboard() {
     }));
   };
 
-  // Convert DB check-ins to calendar events
-  const checkInCalendarEvents = filters.mood
-    ? allCheckIns.map(toCheckInCalendarEvent)
-    : [];
+  // Convert DB events to FullCalendar format, applying filters
+  const dbCalendarEvents = dbEvents
+    .filter((e) => filters[e.category])
+    .map(toFullCalendarEvent);
 
-  // Build today's events for the Today panel
+  // Build today's events for the Today panel (DB + mock)
   const mockTodaysEvents = getTodaysEvents();
-  const todayCheckInEvents = filters.mood
-    ? todayCheckIns.map((c) => {
-        const start = new Date(c.createdAt);
-        const end = new Date(start.getTime() + 15 * 60 * 1000);
-        const summary = `Mood ${c.mood} · Stress ${c.stress} · Motivation ${c.motivation}`;
-        return {
-          id: c.id,
-          title: c.brums?.completed ? "Mood Profile" : "Check-In",
-          category: "mood" as const,
-          start,
-          end,
-          allDay: false,
-          description: c.notes ? `${summary}. ${c.notes}` : summary,
-          metadata: { mood: c.mood, stress: c.stress, motivation: c.motivation } as Record<string, unknown>,
-        };
-      })
-    : [];
-  const todaysEvents = [...mockTodaysEvents, ...todayCheckInEvents].sort(
+  const todayKey = toLocalDateKey(new Date());
+  const dbTodaysEvents = dbEvents.filter((e) => {
+    const eventDate = toLocalDateKey(e.start);
+    return eventDate === todayKey;
+  });
+  const todaysEvents = [...mockTodaysEvents, ...dbTodaysEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime()
   );
 
@@ -113,7 +109,7 @@ export function HomeDashboard() {
           view={view}
           onViewChange={setView}
           filters={filters}
-          checkInEvents={checkInCalendarEvents}
+          dbEvents={dbCalendarEvents}
         />
 
         <div className="space-y-6">

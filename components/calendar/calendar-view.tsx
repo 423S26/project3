@@ -16,20 +16,23 @@ import { toLocalDateKey } from "@/lib/psych-checkins";
 
 type ViewType = "dayGridMonth" | "timeGridWeek";
 
+/** FullCalendar-ready event shape */
+export interface FCEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end?: Date;
+  allDay: boolean;
+  classNames: string[];
+  extendedProps: { category: string; description?: string; metadata?: Record<string, unknown> };
+}
+
 interface CalendarViewProps {
   view: ViewType;
   onViewChange: (view: ViewType) => void;
   filters: Record<EventCategory, boolean>;
-  /** Check-in calendar events passed from parent (fetched from API) */
-  checkInEvents?: Array<{
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    allDay: boolean;
-    classNames: string[];
-    extendedProps: { category: string; description?: string; metadata?: Record<string, unknown> };
-  }>;
+  /** DB-backed calendar events (unified across all categories) */
+  dbEvents?: FCEvent[];
   /** Optional custom event click handler. If provided, overrides default navigation. */
   onEventClick?: (info: EventClickArg) => void;
 }
@@ -43,13 +46,13 @@ const CATEGORY_ROUTE_MAP: Record<EventCategory, string> = {
   assessments: "/assessments",
 };
 
-export function CalendarView({ view, onViewChange, filters, checkInEvents = [], onEventClick: customEventClick }: CalendarViewProps) {
+export function CalendarView({ view, onViewChange, filters, dbEvents = [], onEventClick: customEventClick }: CalendarViewProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const router = useRouter();
 
-  // Get filtered events: mock events + API-fetched check-ins
+  // Get filtered events: mock events + DB-backed events (recovery, training, fueling, mood)
   const mockEvents = getFullCalendarEvents(filters);
-  const events = [...mockEvents, ...checkInEvents];
+  const events = [...mockEvents, ...dbEvents];
 
   useEffect(() => {
     if (calendarRef.current) {

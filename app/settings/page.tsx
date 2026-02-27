@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Settings, Moon, User, Bell, Shield, Download, Target, MessageSquarePlus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/supabase/server";
+import { AthleteProfileEditor } from "@/components/settings/athlete-profile-editor";
 
 export default async function SettingsPage() {
   const user = await getAuthUser();
@@ -87,18 +88,21 @@ export default async function SettingsPage() {
               <CardDescription>Manage your account details</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Account Settings</p>
-                <p className="text-sm text-muted-foreground">
-                  Update your profile and practitioner connection
-                </p>
+          <CardContent className="space-y-4">
+            {!isPsychologist && <AthleteProfileEditor />}
+            {isPsychologist && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Account Settings</p>
+                  <p className="text-sm text-muted-foreground">
+                    Update your profile and practitioner connection
+                  </p>
+                </div>
+                <Button variant="outline" disabled>
+                  Coming Soon
+                </Button>
               </div>
-              <Button variant="outline" disabled>
-                Coming Soon
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
 
