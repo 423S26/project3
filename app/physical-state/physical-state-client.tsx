@@ -48,6 +48,246 @@ function emitSaved() {
   window.dispatchEvent(new Event("anchor-physical-state-saved"));
 }
 
+/* ═══════════════════════════════════════════════════════════
+   SPARKLINE (pure SVG)
+   ═══════════════════════════════════════════════════════════ */
+
+function Sparkline({
+  data,
+  color = "hsl(var(--primary))",
+  width = 120,
+  height = 32,
+}: {
+  data: number[];
+  color?: string;
+  width?: number;
+  height?: number;
+}) {
+  if (data.length < 2) return <div style={{ width, height }} />;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pad = 2;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - pad * 2) - pad;
+    return `${x},${y}`;
+  });
+  const gradId = `spark-${Math.random().toString(36).slice(2, 8)}`;
+  const areaPoints = [...points, `${width},${height}`, `0,${height}`];
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.15} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints.join(" ")} fill={`url(#${gradId})`} />
+      <polyline points={points.join(" ")} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SKELETON PLACEHOLDER
+   ═══════════════════════════════════════════════════════════ */
+
+function SkeletonPulse({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-muted ${className}`} />;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   30-DAY INSIGHTS SECTION
+   ═══════════════════════════════════════════════════════════ */
+
+function dayKey(d: Date) {
+  return d.toISOString().split("T")[0];
+}
+
+function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | null; isPsychologist: boolean }) {
+  const [loading, setLoading] = useState(true);
+  const [sleepData, setSleepData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+  const [loadData, setLoadData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+  const [energyData, setEnergyData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+
+  const athleteParam = isPsychologist ? athleteId ?? undefined : undefined;
+
+  const load = useCallback(async () => {
+    if (!athleteId) return;
+    setLoading(true);
+
+    const today = new Date();
+    const from60 = dayKey(daysAgo(59));
+    const from30 = dayKey(daysAgo(29));
+    const toStr = dayKey(today);
+
+    const [recovery, sessions, energy] = await Promise.all([
+      fetchRecovery(from60, toStr, athleteParam),
+      fetchWorkoutSessions(from60, toStr, athleteParam),
+      fetchEnergy(from60, toStr, athleteParam),
+    ]);
+
+    // Build date-keyed maps for current 30d and prior 30d
+    const current30Start = daysAgo(29);
+    const prior30Start = daysAgo(59);
+
+    // --- SLEEP ---
+    const sleepByDate = new Map<string, number>();
+    recovery.forEach((r) => {
+      if (r.sleep_minutes != null) sleepByDate.set(r.date, r.sleep_minutes / 60);
+    });
+    const sleepCurrent: number[] = [];
+    const sleepPrior: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const cd = dayKey(new Date(current30Start.getTime() + i * 86400000));
+      const pd = dayKey(new Date(prior30Start.getTime() + i * 86400000));
+      sleepCurrent.push(sleepByDate.get(cd) ?? 0);
+      sleepPrior.push(sleepByDate.get(pd) ?? 0);
+    }
+    const sleepAvgCurrent = sleepCurrent.reduce((a, b) => a + b, 0) / Math.max(sleepCurrent.filter(v => v > 0).length, 1);
+    const sleepAvgPrior = sleepPrior.reduce((a, b) => a + b, 0) / Math.max(sleepPrior.filter(v => v > 0).length, 1);
+
+    // --- TRAINING LOAD (duration × RPE) ---
+    const loadByDate = new Map<string, number>();
+    sessions.forEach((s) => {
+      const d = s.started_at.split("T")[0];
+      const sessionLoad = (s.duration_min ?? 30) * (s.rpe ?? 5);
+      loadByDate.set(d, (loadByDate.get(d) ?? 0) + sessionLoad);
+    });
+    const loadCurrent: number[] = [];
+    const loadPrior: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const cd = dayKey(new Date(current30Start.getTime() + i * 86400000));
+      const pd = dayKey(new Date(prior30Start.getTime() + i * 86400000));
+      loadCurrent.push(loadByDate.get(cd) ?? 0);
+      loadPrior.push(loadByDate.get(pd) ?? 0);
+    }
+    const loadSumCurrent = loadCurrent.reduce((a, b) => a + b, 0);
+    const loadSumPrior = loadPrior.reduce((a, b) => a + b, 0);
+    const loadAvgCurrent = loadSumCurrent / 30;
+    const loadAvgPrior = loadSumPrior / 30;
+
+    // --- ENERGY NET ---
+    const netByDate = new Map<string, number>();
+    energy.days.forEach((d) => { netByDate.set(d.date, d.net); });
+    const netCurrent: number[] = [];
+    const netPrior: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const cd = dayKey(new Date(current30Start.getTime() + i * 86400000));
+      const pd = dayKey(new Date(prior30Start.getTime() + i * 86400000));
+      netCurrent.push(netByDate.get(cd) ?? 0);
+      netPrior.push(netByDate.get(pd) ?? 0);
+    }
+    const netAvgCurrent = netCurrent.reduce((a, b) => a + b, 0) / Math.max(netCurrent.filter(v => v !== 0).length, 1);
+    const netAvgPrior = netPrior.reduce((a, b) => a + b, 0) / Math.max(netPrior.filter(v => v !== 0).length, 1);
+
+    setSleepData({ daily: sleepCurrent, avg: sleepAvgCurrent, delta: sleepAvgCurrent - sleepAvgPrior });
+    setLoadData({ daily: loadCurrent, avg: loadAvgCurrent, delta: loadAvgCurrent - loadAvgPrior });
+    setEnergyData({ daily: netCurrent, avg: netAvgCurrent, delta: netAvgCurrent - netAvgPrior });
+    setLoading(false);
+  }, [athleteId, athleteParam]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const onSaved = () => { load(); };
+    window.addEventListener("anchor-physical-state-saved", onSaved);
+    window.addEventListener("anchor-checkin-saved", onSaved);
+    return () => {
+      window.removeEventListener("anchor-physical-state-saved", onSaved);
+      window.removeEventListener("anchor-checkin-saved", onSaved);
+    };
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i}>
+            <CardContent className="py-5 space-y-3">
+              <SkeletonPulse className="h-3 w-20" />
+              <SkeletonPulse className="h-7 w-16" />
+              <SkeletonPulse className="h-8 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const tiles = [
+    {
+      label: "Avg Sleep",
+      value: `${sleepData.avg.toFixed(1)}h`,
+      delta: sleepData.delta,
+      deltaFmt: `${sleepData.delta >= 0 ? "+" : ""}${sleepData.delta.toFixed(1)}h`,
+      daily: sleepData.daily,
+      color: "hsl(270, 70%, 60%)",
+      icon: <Moon className="h-4 w-4 text-violet-500" />,
+      goodUp: true,
+    },
+    {
+      label: "Avg Training Load",
+      value: Math.round(loadData.avg).toString(),
+      delta: loadData.delta,
+      deltaFmt: `${loadData.delta >= 0 ? "+" : ""}${Math.round(loadData.delta)}`,
+      daily: loadData.daily,
+      color: "hsl(221, 83%, 53%)",
+      icon: <Dumbbell className="h-4 w-4 text-blue-500" />,
+      goodUp: true,
+    },
+    {
+      label: "Avg Energy Net",
+      value: `${Math.round(energyData.avg)} cal`,
+      delta: energyData.delta,
+      deltaFmt: `${energyData.delta >= 0 ? "+" : ""}${Math.round(energyData.delta)}`,
+      daily: energyData.daily,
+      color: "hsl(142, 76%, 36%)",
+      icon: <Flame className="h-4 w-4 text-green-500" />,
+      goodUp: true,
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium text-muted-foreground">30-Day Trends</h2>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {tiles.map((t) => {
+          const isPositive = t.goodUp ? t.delta >= 0 : t.delta <= 0;
+          return (
+            <Card key={t.label} className="overflow-hidden">
+              <CardContent className="py-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  {t.icon}
+                  <span className="text-xs font-medium text-muted-foreground">{t.label}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold">{t.value}</span>
+                  <span className={`text-xs font-medium ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+                    {t.deltaFmt}
+                  </span>
+                </div>
+                <Sparkline data={t.daily} color={t.color} width={160} height={28} />
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+
 export function PhysicalStateClient() {
   const { activeAthleteId, isPsychologist } = useAthlete();
   const searchParams = useSearchParams();
@@ -83,19 +323,22 @@ export function PhysicalStateClient() {
         </div>
       )}
 
+      {/* 30-Day Insights */}
+      <InsightsTrends athleteId={activeAthleteId} isPsychologist={isPsychologist} />
+
       {/* Energy & Readiness card */}
       <EnergyReadinessCard athleteId={activeAthleteId} isPsychologist={isPsychologist} />
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg border bg-muted/50 p-1">
+      <div className="flex gap-1 rounded-xl border bg-muted/40 p-1 shadow-sm">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
               activeTab === tab.key
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
             }`}
           >
             {tab.icon}
@@ -204,8 +447,11 @@ function EnergyReadinessCard({ athleteId, isPsychologist }: { athleteId: string 
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-4">
-          <p className="text-sm text-muted-foreground">Loading energy data...</p>
+        <CardContent className="py-5 space-y-3">
+          <SkeletonPulse className="h-4 w-32" />
+          <div className="grid gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => <SkeletonPulse key={i} className="h-16 w-full" />)}
+          </div>
         </CardContent>
       </Card>
     );
@@ -418,7 +664,9 @@ function RecoveryTab({ athleteId, isPsychologist }: { athleteId: string | null; 
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => <SkeletonPulse key={i} className="h-16 w-full" />)}
+            </div>
           ) : entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No recovery data yet. Connect a wearable or log manually.
@@ -426,19 +674,35 @@ function RecoveryTab({ athleteId, isPsychologist }: { athleteId: string | null; 
           ) : (
             <div className="space-y-2">
               {entries.slice(0, 14).map((e) => (
-                <div key={e.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-1">
+                <div key={e.id} className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{e.date}</span>
                       <Badge variant="recovery" className="text-xs">{e.source}</Badge>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap gap-2">
                       {e.sleep_minutes != null && (
-                        <span>Sleep: {Math.round(e.sleep_minutes / 60 * 10) / 10}h</span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+                          <Moon className="h-3 w-3" />
+                          {Math.round(e.sleep_minutes / 60 * 10) / 10}h
+                        </span>
                       )}
-                      {e.sleep_score != null && <span>Score: {e.sleep_score}</span>}
-                      {e.resting_hr != null && <span>RHR: {e.resting_hr} bpm</span>}
-                      {e.hrv_ms != null && <span>HRV: {e.hrv_ms} ms</span>}
+                      {e.sleep_score != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+                          Score {e.sleep_score}
+                        </span>
+                      )}
+                      {e.resting_hr != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300">
+                          <Heart className="h-3 w-3" />
+                          {e.resting_hr} bpm
+                        </span>
+                      )}
+                      {e.hrv_ms != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
+                          HRV {e.hrv_ms}ms
+                        </span>
+                      )}
                     </div>
                     {e.notes && <p className="text-xs text-muted-foreground">{e.notes}</p>}
                   </div>
@@ -614,47 +878,70 @@ function TrainingTab({ athleteId, isPsychologist }: { athleteId: string | null; 
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => <SkeletonPulse key={i} className="h-20 w-full" />)}
+            </div>
           ) : sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground">No workouts logged yet.</p>
           ) : (
             <div className="space-y-2">
-              {sessions.slice(0, 20).map((s) => (
-                <div key={s.id} className="rounded-lg border p-3 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{s.name}</span>
-                      <Badge variant="training" className="text-xs">{s.type === "sport_session" ? "Sport" : "Strength"}</Badge>
-                      {s.sport && <Badge variant="outline" className="text-xs">{s.sport}</Badge>}
+              {sessions.slice(0, 20).map((s) => {
+                const sessionLoad = s.duration_min && s.rpe ? s.duration_min * s.rpe : null;
+                return (
+                  <div key={s.id} className="rounded-lg border p-3 space-y-2 transition-colors hover:bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{s.name}</span>
+                        <Badge variant="training" className="text-xs">{s.type === "sport_session" ? "Sport" : "Strength"}</Badge>
+                        {s.sport && <Badge variant="outline" className="text-xs">{s.sport}</Badge>}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(s.started_at).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(s.started_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                    {s.duration_min && <span>{s.duration_min} min</span>}
-                    {s.rpe && <span>RPE {s.rpe}/10</span>}
-                    {s.intensity && <span>{s.intensity}</span>}
-                  </div>
-                  {s.notes && <p className="text-xs text-muted-foreground">{s.notes}</p>}
-                  {s.workout_session_exercises && s.workout_session_exercises.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {s.workout_session_exercises.map((ex) => (
-                        <div key={ex.id} className="text-xs text-muted-foreground">
-                          <span className="font-medium">{ex.exercise_name}</span>
-                          {ex.workout_sets && ex.workout_sets.length > 0 && (
-                            <span className="ml-2">
-                              {ex.workout_sets.map((set) =>
-                                `${set.reps ?? "-"}×${set.weight_kg ?? "-"}kg`
-                              ).join(", ")}
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                    <div className="flex flex-wrap gap-2">
+                      {s.duration_min != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                          {s.duration_min} min
+                        </span>
+                      )}
+                      {s.rpe != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                          RPE {s.rpe}/10
+                        </span>
+                      )}
+                      {s.intensity && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          {s.intensity}
+                        </span>
+                      )}
+                      {sessionLoad != null && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          <Zap className="h-3 w-3" />
+                          Load {sessionLoad}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {s.notes && <p className="text-xs text-muted-foreground">{s.notes}</p>}
+                    {s.workout_session_exercises && s.workout_session_exercises.length > 0 && (
+                      <div className="mt-1 space-y-1 border-t pt-2">
+                        {s.workout_session_exercises.map((ex) => (
+                          <div key={ex.id} className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground/80">{ex.exercise_name}</span>
+                            {ex.workout_sets && ex.workout_sets.length > 0 && (
+                              <span className="ml-2">
+                                {ex.workout_sets.map((set) =>
+                                  `${set.reps ?? "-"}\u00D7${set.weight_kg ?? "-"}kg`
+                                ).join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -1172,33 +1459,33 @@ function FuelingTab({ athleteId, isPsychologist }: { athleteId: string | null; i
 
   return (
     <div className="space-y-4">
-      {/* Today's macros summary – orange-themed fueling */}
+      {/* Today's macros summary */}
       <div className="grid gap-4 sm:grid-cols-4">
         <Card className="border-orange-200 dark:border-orange-800">
-          <CardContent className="pt-4">
+          <CardContent className="py-4">
             <div className="flex items-center gap-1.5">
               <Flame className="h-4 w-4 text-orange-500" />
-              <p className="text-sm text-muted-foreground">Calories In</p>
+              <span className="text-xs font-medium text-muted-foreground">Calories In</span>
             </div>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{Math.round(todayTotals.calories)}</p>
+            <p className="mt-1 text-2xl font-bold text-orange-600 dark:text-orange-400">{Math.round(todayTotals.calories)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Protein</p>
-            <p className="text-2xl font-bold">{Math.round(todayTotals.protein)}g</p>
+          <CardContent className="py-4">
+            <span className="text-xs font-medium text-muted-foreground">Protein</span>
+            <p className="mt-1 text-2xl font-bold">{Math.round(todayTotals.protein)}g</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Carbs</p>
-            <p className="text-2xl font-bold">{Math.round(todayTotals.carbs)}g</p>
+          <CardContent className="py-4">
+            <span className="text-xs font-medium text-muted-foreground">Carbs</span>
+            <p className="mt-1 text-2xl font-bold">{Math.round(todayTotals.carbs)}g</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Fat</p>
-            <p className="text-2xl font-bold">{Math.round(todayTotals.fat)}g</p>
+          <CardContent className="py-4">
+            <span className="text-xs font-medium text-muted-foreground">Fat</span>
+            <p className="mt-1 text-2xl font-bold">{Math.round(todayTotals.fat)}g</p>
           </CardContent>
         </Card>
       </div>
@@ -1222,27 +1509,45 @@ function FuelingTab({ athleteId, isPsychologist }: { athleteId: string | null; i
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => <SkeletonPulse key={i} className="h-16 w-full" />)}
+            </div>
           ) : meals.length === 0 ? (
             <p className="text-sm text-muted-foreground">No meals logged yet. Search for foods to get started.</p>
           ) : (
             <div className="space-y-2">
               {meals.slice(0, 30).map((m) => (
-                <div key={m.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-1">
+                <div key={m.id} className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{m.meal_name}</span>
                       {m.meal_type && <Badge variant="fueling" className="text-xs">{m.meal_type.replace("_", " ")}</Badge>}
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      {m.calories != null && <span>{Math.round(m.calories)} cal</span>}
-                      {m.protein_g != null && <span>P: {Math.round(m.protein_g)}g</span>}
-                      {m.carbs_g != null && <span>C: {Math.round(m.carbs_g)}g</span>}
-                      {m.fat_g != null && <span>F: {Math.round(m.fat_g)}g</span>}
+                    <div className="flex flex-wrap gap-2">
+                      {m.calories != null && (
+                        <span className="inline-flex items-center rounded-md bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-700 dark:text-orange-300">
+                          {Math.round(m.calories)} cal
+                        </span>
+                      )}
+                      {m.protein_g != null && (
+                        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          P: {Math.round(m.protein_g)}g
+                        </span>
+                      )}
+                      {m.carbs_g != null && (
+                        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          C: {Math.round(m.carbs_g)}g
+                        </span>
+                      )}
+                      {m.fat_g != null && (
+                        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          F: {Math.round(m.fat_g)}g
+                        </span>
+                      )}
                     </div>
                     {m.notes && <p className="text-xs text-muted-foreground">{m.notes}</p>}
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="ml-4 shrink-0 text-xs text-muted-foreground">
                     {new Date(m.logged_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </span>
                 </div>
