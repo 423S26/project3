@@ -1644,9 +1644,9 @@ function MealForm({ onSaved }: { onSaved: () => void }) {
 
           {searchResults.length > 0 && (
             <div className="max-h-60 overflow-y-auto rounded-md border">
-              {searchResults.map((food) => (
+              {searchResults.map((food, i) => (
                 <button
-                  key={food.foodId}
+                  key={`${food.foodId}-${i}`}
                   type="button"
                   onClick={() => selectFood(food)}
                   className="flex w-full items-center justify-between p-2 text-left text-sm hover:bg-accent/50 transition-colors border-b last:border-b-0"
