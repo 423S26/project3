@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+function getServiceSupabase() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return null;
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey
+  );
+}
+
 /**
  * GET /api/assignments
  * Returns current user's assignment(s):
@@ -25,7 +34,6 @@ export async function GET() {
     .single();
 
   if (profile?.role === "ATHLETE") {
-    // Return athlete's psychologist (if assigned)
     const { data: assignment } = await supabase
       .from("psychologist_athletes")
       .select("psychologist_id, created_at, psychologist:psychologist_id(id, name, email)")
@@ -34,8 +42,12 @@ export async function GET() {
 
     return NextResponse.json({ psychologist: assignment?.psychologist ?? null });
   } else if (profile?.role === "PSYCHOLOGIST") {
-    // Return psychologist's caseload
-    const { data: assignments, error } = await supabase
+    const serviceSupabase = getServiceSupabase();
+    if (!serviceSupabase) {
+      return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
+    }
+
+    const { data: assignments, error } = await serviceSupabase
       .from("psychologist_athletes")
       .select("athlete_id, created_at, athlete:athlete_id(id, name, email, athlete_profiles(sport, position, team))")
       .eq("psychologist_id", user.id)
@@ -61,7 +73,7 @@ export async function GET() {
  * POST /api/assignments
  * Create a new assignment:
  * - Athlete: assign self to a psychologist (body: { psychologistId })
- * - Psychologist: assign an athlete to self (body: { athleteId } OR { athleteEmail })
+ * - Psychologist: assign an athlete to self (body: { athleteName, athleteEmail })
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -82,7 +94,6 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   if (profile?.role === "ATHLETE") {
-    // Athlete assigning themselves to a psychologist
     const { psychologistId } = body;
     if (!psychologistId) {
       return NextResponse.json(
@@ -91,7 +102,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Upsert (replace existing assignment if any)
     const { data, error } = await supabase
       .from("psychologist_athletes")
       .upsert(
@@ -110,36 +120,37 @@ export async function POST(req: Request) {
 
     return NextResponse.json(data, { status: 201 });
   } else if (profile?.role === "PSYCHOLOGIST") {
-    // Psychologist assigning an athlete to themselves
-    let athleteId = body.athleteId;
+    let athleteId = body.athleteId as string | undefined;
 
-    // If athleteEmail provided, look up athlete by email (profiles first, then auth.users)
     if (!athleteId && body.athleteEmail) {
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!serviceRoleKey) {
+      const providedName = String(body.athleteName ?? "").trim();
+      if (!providedName) {
+        return NextResponse.json(
+          { error: "athleteName is required when using athleteEmail" },
+          { status: 400 }
+        );
+      }
+
+      const serviceSupabase = getServiceSupabase();
+      if (!serviceSupabase) {
         return NextResponse.json(
           { error: "Service role key not configured" },
           { status: 500 }
         );
       }
 
-      const serviceSupabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey
-      );
-
       const emailNorm = body.athleteEmail.trim().toLowerCase();
 
-      let athleteProfile = await serviceSupabase
+      const athleteProfile = await serviceSupabase
         .from("profiles")
-        .select("id")
+        .select("id, name, email")
         .ilike("email", emailNorm)
         .eq("role", "ATHLETE")
         .maybeSingle()
         .then((r) => r.data);
 
       if (!athleteProfile?.id) {
-        // Not in profiles — may exist only in auth.users (e.g. created in dashboard or trigger missed)
+        // Not in profiles — may exist only in auth.users
         const { data: list } = await serviceSupabase.auth.admin.listUsers({
           perPage: 1000,
         });
@@ -147,13 +158,22 @@ export async function POST(req: Request) {
           (u) => u.email?.toLowerCase() === emailNorm
         );
         if (authUser) {
-          // Ensure profile and athlete_profile exist
+          const authName =
+            (authUser.user_metadata?.name as string | undefined) ??
+            (authUser.user_metadata?.full_name as string | undefined) ??
+            "";
+          if (authName && authName.trim().toLowerCase() !== providedName.toLowerCase()) {
+            return NextResponse.json(
+              { error: "Name does not match the athlete account for that email" },
+              { status: 400 }
+            );
+          }
+
           await serviceSupabase.from("profiles").upsert(
             {
               id: authUser.id,
               email: authUser.email ?? emailNorm,
-              name:
-                (authUser.user_metadata?.name as string) ?? authUser.email ?? "User",
+              name: authName?.trim() || providedName || authUser.email || "User",
               role: "ATHLETE",
             },
             { onConflict: "id" }
@@ -165,6 +185,13 @@ export async function POST(req: Request) {
           athleteId = authUser.id;
         }
       } else {
+        const existingName = String(athleteProfile.name ?? "").trim();
+        if (existingName && existingName.toLowerCase() !== providedName.toLowerCase()) {
+          return NextResponse.json(
+            { error: "Name does not match the athlete record for that email" },
+            { status: 400 }
+          );
+        }
         athleteId = athleteProfile.id;
       }
 
@@ -172,6 +199,24 @@ export async function POST(req: Request) {
         return NextResponse.json(
           { error: "Athlete not found with that email" },
           { status: 404 }
+        );
+      }
+
+      // Prevent reassigning an athlete already assigned to a different psychologist
+      const { data: existingAssignment, error: existingError } = await serviceSupabase
+        .from("psychologist_athletes")
+        .select("psychologist_id")
+        .eq("athlete_id", athleteId)
+        .maybeSingle();
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 });
+      }
+
+      if (existingAssignment?.psychologist_id && existingAssignment.psychologist_id !== user.id) {
+        return NextResponse.json(
+          { error: "That athlete is already assigned to another psychologist" },
+          { status: 409 }
         );
       }
     }
@@ -183,8 +228,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // Insert assignment
-    const { data, error } = await supabase
+    // Use service role to bypass RLS for the assignment write
+    const serviceSupabase = getServiceSupabase();
+    if (!serviceSupabase) {
+      return NextResponse.json(
+        { error: "Service role key not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { data, error } = await serviceSupabase
       .from("psychologist_athletes")
       .upsert(
         {
@@ -229,7 +282,6 @@ export async function DELETE(req: Request) {
     .single();
 
   if (profile?.role === "ATHLETE") {
-    // Athlete removing their psychologist
     const { error } = await supabase
       .from("psychologist_athletes")
       .delete()
@@ -241,7 +293,6 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } else if (profile?.role === "PSYCHOLOGIST") {
-    // Psychologist removing an athlete from caseload
     const { searchParams } = new URL(req.url);
     const athleteId = searchParams.get("athleteId");
 
@@ -252,7 +303,16 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const { error } = await supabase
+    // Use service role to bypass RLS for the assignment delete
+    const serviceSupabase = getServiceSupabase();
+    if (!serviceSupabase) {
+      return NextResponse.json(
+        { error: "Service role key not configured" },
+        { status: 500 }
+      );
+    }
+
+    const { error } = await serviceSupabase
       .from("psychologist_athletes")
       .delete()
       .eq("psychologist_id", user.id)

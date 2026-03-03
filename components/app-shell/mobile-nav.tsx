@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Settings,
   Anchor,
+  Users,
   Menu,
   X,
 } from "lucide-react";
@@ -49,6 +50,7 @@ const athleteNavItems = [
  */
 const psychologistNavItems = [
   { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/psychologist/athletes", label: "Athletes", icon: <Users className="h-5 w-5" /> },
   { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
