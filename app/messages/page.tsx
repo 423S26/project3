@@ -18,6 +18,7 @@ interface Contact {
 export default function MessagesInboxPage() {
   const router = useRouter();
   const { user } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [threads, setThreads] = useState<ThreadPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -25,6 +26,9 @@ export default function MessagesInboxPage() {
   const [composeTarget, setComposeTarget] = useState<string>("");
   const [composeBody, setComposeBody] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Prevent hydration mismatch: only render session-dependent UI after client mount
+  useEffect(() => setMounted(true), []);
 
   const isPsychologist = user?.role === "PSYCHOLOGIST";
 
@@ -102,9 +106,11 @@ export default function MessagesInboxPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted-foreground">
-            {isPsychologist
-              ? "Communicate with your athletes"
-              : "Communicate with your psychologist"}
+            {mounted
+              ? isPsychologist
+                ? "Communicate with your athletes"
+                : "Communicate with your psychologist"
+              : "Your conversations"}
           </p>
         </div>
         {contactsWithoutThread.length > 0 && (
@@ -160,7 +166,7 @@ export default function MessagesInboxPage() {
       )}
 
       {/* AI Coach entry — athletes only, always pinned at top */}
-      {!isPsychologist && (
+      {mounted && !isPsychologist && (
         <button
           onClick={() => router.push("/practice-lab")}
           className="w-full rounded-lg border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
