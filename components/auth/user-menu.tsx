@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "./session-provider";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 
 export function UserMenu() {
+  const router = useRouter();
   const { user, supabase } = useSession();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -35,6 +37,13 @@ export function UserMenu() {
           <p className="truncate text-sm font-medium">{user.name}</p>
           <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
         </div>
+        <button
+          onClick={() => router.push("/settings")}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
       </div>
       <Button
         variant="outline"

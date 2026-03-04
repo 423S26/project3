@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Users, Plus, RefreshCw, X, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Users, Plus, RefreshCw, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,7 @@ interface CaseloadAthlete {
 }
 
 export function PsychologistAthletesManager() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [athletes, setAthletes] = useState<CaseloadAthlete[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +83,7 @@ export function PsychologistAthletesManager() {
   }
 
   async function removeAthlete(athleteId: string) {
-    if (!confirm("Remove this athlete from your caseload?")) return;
+    if (!confirm("Remove this athlete from your athletes?")) return;
     try {
       const res = await fetch(`/api/assignments?athleteId=${encodeURIComponent(athleteId)}`, {
         method: "DELETE",
@@ -172,7 +173,7 @@ export function PsychologistAthletesManager() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">My caseload ({athletes.length})</CardTitle>
+          <CardTitle className="text-lg">My Athletes ({athletes.length})</CardTitle>
           <CardDescription>Click an athlete to open their details.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -187,7 +188,11 @@ export function PsychologistAthletesManager() {
               {athletes.map((a) => {
                 const profile = a.athlete.athlete_profiles?.[0];
                 return (
-                  <div key={a.athleteId} className="flex items-center justify-between gap-3 p-3">
+                  <div
+                    key={a.athleteId}
+                    onClick={() => router.push(`/psychologist/athletes/${a.athleteId}`)}
+                    className="flex cursor-pointer items-center justify-between gap-3 p-3 transition-colors hover:bg-accent/50"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{a.athlete.name}</span>
@@ -199,18 +204,16 @@ export function PsychologistAthletesManager() {
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Link
-                        href={`/psychologist/athletes/${a.athleteId}`}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm hover:bg-accent"
-                      >
-                        Open <ExternalLink className="h-4 w-4" />
-                      </Link>
-                      <Button variant="ghost" size="sm" onClick={() => removeAthlete(a.athleteId)}>
-                        <X className="h-4 w-4" />
-                        Remove
-                      </Button>
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeAthlete(a.athleteId);
+                      }}
+                      className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      title="Remove athlete"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 );
               })}
