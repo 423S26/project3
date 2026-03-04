@@ -80,25 +80,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Fast path: getSession() reads from local storage (instant, no network).
-      //    Use it to render the UI immediately with the correct role.
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadProfile(session.user.id, session.user);
-      }
-      setLoading(false);
-
-      // 2. Slow path: getUser() validates the token with Supabase (network call).
-      //    If the token is expired or invalid, clear the user.
-      const {
-        data: { user: verifiedUser },
-      } = await supabase.auth.getUser();
-      if (verifiedUser) {
-        await loadProfile(verifiedUser.id, verifiedUser);
-      } else if (!session?.user) {
+      // Fast path: getSession() reads from localStorage — instant, no network.
+      // We clear loading immediately after this so the UI is never stuck behind a network call.
+      let sessionUserId: string | null = null;
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        sessionUserId = session?.user?.id ?? null;
+        if (session?.user) {
+          void loadProfile(session.user.id, session.user);
+        } else {
+          setUser(null);
+        }
+      } catch {
         setUser(null);
+      } finally {
+        // Always clear loading after the fast path, regardless of any error.
+        setLoading(false);
+      }
+
+      // Slow path: getUser() validates/refreshes the token with Supabase over the network.
+      // Runs entirely in the background — loading is already false, so the UI is never blocked.
+      try {
+        const {
+          data: { user: verifiedUser },
+        } = await supabase.auth.getUser();
+        if (verifiedUser) {
+          void loadProfile(verifiedUser.id, verifiedUser);
+        } else if (!sessionUserId) {
+          // Token was invalid and there was no local session either — clear the user.
+          setUser(null);
+        }
+      } catch {
+        // Silently ignore — the fast path result stands.
       }
     };
     init();
@@ -106,12 +121,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await loadProfile(session.user.id, session.user);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
+      try {
+        if (session?.user) {
+          void loadProfile(session.user.id, session.user);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
