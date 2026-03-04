@@ -6,7 +6,7 @@ import { useSession } from "@/components/auth/session-provider";
 import { fetchThreads, startThread, type ThreadPreview } from "@/lib/messages-api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, Send, User, MessageSquare } from "lucide-react";
+import { Mail, Send, User, MessageSquare, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Contact {
@@ -157,6 +157,26 @@ export default function MessagesInboxPage() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* AI Coach entry — athletes only, always pinned at top */}
+      {!isPsychologist && (
+        <button
+          onClick={() => router.push("/practice-lab")}
+          className="w-full rounded-lg border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">AI Coach — Practice Lab</p>
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                Ask questions, get reflections, upload plans & schedules
+              </p>
+            </div>
+          </div>
+        </button>
       )}
 
       {/* Thread list */}
