@@ -120,6 +120,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json(data, { status: 201 });
   } else if (profile?.role === "PSYCHOLOGIST") {
+    const serviceSupabase = getServiceSupabase();
+    if (!serviceSupabase) {
+      return NextResponse.json(
+        { error: "Service role key not configured" },
+        { status: 500 }
+      );
+    }
+
     let athleteId = body.athleteId as string | undefined;
 
     if (!athleteId && body.athleteEmail) {
@@ -128,14 +136,6 @@ export async function POST(req: Request) {
         return NextResponse.json(
           { error: "athleteName is required when using athleteEmail" },
           { status: 400 }
-        );
-      }
-
-      const serviceSupabase = getServiceSupabase();
-      if (!serviceSupabase) {
-        return NextResponse.json(
-          { error: "Service role key not configured" },
-          { status: 500 }
         );
       }
 
@@ -197,26 +197,8 @@ export async function POST(req: Request) {
 
       if (!athleteId) {
         return NextResponse.json(
-          { error: "Athlete not found with that email" },
+          { error: "No athlete account found with that email" },
           { status: 404 }
-        );
-      }
-
-      // Prevent reassigning an athlete already assigned to a different psychologist
-      const { data: existingAssignment, error: existingError } = await serviceSupabase
-        .from("psychologist_athletes")
-        .select("psychologist_id")
-        .eq("athlete_id", athleteId)
-        .maybeSingle();
-
-      if (existingError) {
-        return NextResponse.json({ error: existingError.message }, { status: 500 });
-      }
-
-      if (existingAssignment?.psychologist_id && existingAssignment.psychologist_id !== user.id) {
-        return NextResponse.json(
-          { error: "That athlete is already assigned to another psychologist" },
-          { status: 409 }
         );
       }
     }
@@ -228,24 +210,52 @@ export async function POST(req: Request) {
       );
     }
 
-    // Use service role to bypass RLS for the assignment write
-    const serviceSupabase = getServiceSupabase();
-    if (!serviceSupabase) {
+    const { data: existingRows, error: lookupError } = await serviceSupabase
+      .from("psychologist_athletes")
+      .select("psychologist_id")
+      .eq("athlete_id", athleteId);
+
+    if (lookupError) {
+      return NextResponse.json({ error: lookupError.message }, { status: 500 });
+    }
+
+    if (existingRows && existingRows.length > 1) {
       return NextResponse.json(
-        { error: "Service role key not configured" },
+        { error: "Data integrity error: multiple assignment rows for the same athlete" },
         { status: 500 }
       );
     }
 
+    const existingAssignment = existingRows?.[0];
+
+    if (existingAssignment) {
+      if (existingAssignment.psychologist_id === user.id) {
+        return NextResponse.json(
+          { psychologist_id: user.id, athlete_id: athleteId },
+          { status: 200 }
+        );
+      }
+
+      const { data: updated, error: updateError } = await serviceSupabase
+        .from("psychologist_athletes")
+        .update({ psychologist_id: user.id })
+        .eq("athlete_id", athleteId)
+        .select()
+        .single();
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      return NextResponse.json(updated, { status: 200 });
+    }
+
     const { data, error } = await serviceSupabase
       .from("psychologist_athletes")
-      .upsert(
-        {
-          psychologist_id: user.id,
-          athlete_id: athleteId,
-        },
-        { onConflict: "athlete_id" }
-      )
+      .insert({
+        psychologist_id: user.id,
+        athlete_id: athleteId,
+      })
       .select()
       .single();
 
