@@ -2,6 +2,14 @@
 
 A mental and physical wellbeing tracking platform for sports psychologists and their athletes.
 
+## Getting Started
+
+### Try the App
+
+Visit the live site: **[https://anchor-testwebsite.vercel.app/](https://anchor-testwebsite.vercel.app/)**
+
+Register as an Athlete or Psychologist to explore all features.
+
 ## Overview
 
 Anchor provides a unified, calendar-driven platform where psychological state, physical recovery, training load, and practitioner sessions are tracked together in one place.
@@ -41,14 +49,6 @@ Anchor provides a unified, calendar-driven platform where psychological state, p
 - **Database**: Supabase (Postgres) with Row-Level Security
 - **Auth**: Supabase Auth (email + password, PKCE flow)
 - **Hosting**: Vercel (target)
-
-## Getting Started
-
-### Try the App
-
-Visit the live site: **[https://anchor-testwebsite.vercel.app/](https://anchor-testwebsite.vercel.app/)**
-
-Register as an Athlete or Psychologist to explore all features.
 
 ### Local Development
 
