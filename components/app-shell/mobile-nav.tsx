@@ -26,6 +26,7 @@ import {
   Mail,
   Menu,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ const psychologistNavItems = [
   { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
   { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
   { href: "/psychologist/athletes", label: "Athletes", icon: <Users className="h-5 w-5" /> },
+  { href: "/psychologist/sessions", label: "Sessions", icon: <CalendarDays className="h-5 w-5" /> },
 ];
 
 /** Mobile header bar + slide-out navigation drawer. Hidden on lg+ screens. */

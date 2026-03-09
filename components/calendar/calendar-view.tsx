@@ -44,6 +44,7 @@ const CATEGORY_ROUTE_MAP: Record<EventCategory, string> = {
   recovery: "/physical-state",
   fueling: "/physical-state",
   assessments: "/assessments",
+  sessions: "/sessions",
 };
 
 export function CalendarView({ view, onViewChange, filters, dbEvents = [], onEventClick: customEventClick }: CalendarViewProps) {

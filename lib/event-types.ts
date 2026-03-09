@@ -1,7 +1,7 @@
 /**
  * Event category types for the Anchor sports psychology dashboard
  */
-export type EventCategory = "training" | "recovery" | "mood" | "fueling" | "assessments";
+export type EventCategory = "training" | "recovery" | "mood" | "fueling" | "assessments" | "sessions";
 
 /**
  * Unified event type used across the calendar and dashboard
@@ -68,6 +68,13 @@ export const CATEGORY_CONFIG: Record<EventCategory, CategoryConfig> = {
     textColor: "text-teal-500",
     icon: "ClipboardList",
   },
+  sessions: {
+    label: "Sessions",
+    color: "hsl(340 75% 55%)",
+    bgColor: "bg-pink-500",
+    textColor: "text-pink-500",
+    icon: "Video",
+  },
 };
 
 /**
@@ -86,6 +93,7 @@ export const ALL_CATEGORIES: EventCategory[] = [
   "mood",
   "fueling",
   "assessments",
+  "sessions",
 ];
 
 /**
@@ -98,5 +106,6 @@ export function getDefaultFilters(): Record<EventCategory, boolean> {
     mood: true,
     fueling: true,
     assessments: true,
+    sessions: true,
   };
 }

@@ -7,7 +7,7 @@ import {
   ALL_CATEGORIES,
   CATEGORY_CONFIG,
 } from "@/lib/event-types";
-import { Dumbbell, Battery, Smile, Utensils, ClipboardList } from "lucide-react";
+import { Dumbbell, Battery, Smile, Utensils, ClipboardList, Video } from "lucide-react";
 
 interface CalendarFiltersProps {
   filters: Record<EventCategory, boolean>;
@@ -20,6 +20,7 @@ const CATEGORY_ICONS: Record<EventCategory, React.ReactNode> = {
   mood: <Smile className="h-4 w-4" />,
   fueling: <Utensils className="h-4 w-4" />,
   assessments: <ClipboardList className="h-4 w-4" />,
+  sessions: <Video className="h-4 w-4" />,
 };
 
 export function CalendarFilters({

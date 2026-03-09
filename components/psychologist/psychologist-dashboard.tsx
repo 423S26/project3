@@ -18,6 +18,10 @@ import {
   Target,
   HelpCircle,
   ArrowRight,
+  CalendarDays,
+  Video,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import { EMOJI_SCALE } from "@/lib/emoji-scale";
 
@@ -48,11 +52,23 @@ interface CaseloadAthlete {
   };
 }
 
+interface DashboardSession {
+  id: string;
+  session_type: "virtual" | "in_person";
+  status: "scheduled" | "completed" | "cancelled";
+  starts_at: string;
+  duration_min: number;
+  location: string | null;
+  notes: string | null;
+  athlete: { name: string; email: string } | null;
+}
+
 export function PsychologistDashboard() {
   const router = useRouter();
   const [recentCheckIns, setRecentCheckIns] = useState<CaseloadCheckIn[]>([]);
   const [caseload, setCaseload] = useState<CaseloadAthlete[]>([]);
   const [last7CheckIns, setLast7CheckIns] = useState<CaseloadCheckIn[]>([]);
+  const [todaySessions, setTodaySessions] = useState<DashboardSession[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -60,6 +76,28 @@ export function PsychologistDashboard() {
       if (res.ok) {
         const data = await res.json();
         setCaseload(data.caseload ?? []);
+      }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/sessions");
+        if (res.ok) {
+          const all: DashboardSession[] = await res.json();
+          const todayKey = new Date().toISOString().split("T")[0];
+          setTodaySessions(
+            all.filter(
+              (s) =>
+                s.status === "scheduled" &&
+                s.starts_at.startsWith(todayKey)
+            )
+          );
+        }
+      } catch {
+        /* non-critical */
       }
     };
     load();
@@ -174,6 +212,79 @@ export function PsychologistDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Today's Sessions */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-pink-500" />
+                Today&apos;s Sessions
+              </CardTitle>
+              <CardDescription>
+                {todaySessions.length === 0
+                  ? "No sessions scheduled for today"
+                  : `${todaySessions.length} session${todaySessions.length !== 1 ? "s" : ""} today`}
+              </CardDescription>
+            </div>
+            <Link
+              href="/psychologist/sessions"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1")}
+            >
+              All Sessions
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {todaySessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You have no sessions today. Enjoy your free time!
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {todaySessions.map((s) => {
+                const time = new Date(s.starts_at).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                });
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => router.push("/psychologist/sessions")}
+                    className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-accent/50"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-2 font-medium">
+                        {s.session_type === "virtual" ? (
+                          <Video className="h-4 w-4 text-blue-500" />
+                        ) : (
+                          <MapPin className="h-4 w-4 text-emerald-500" />
+                        )}
+                        {s.session_type === "virtual" ? "Virtual" : "In-person"} Session
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {time}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      with{" "}
+                      <span className="font-medium text-foreground">
+                        {s.athlete?.name ?? "Unknown"}
+                      </span>
+                      {" \u00B7 "}{s.duration_min} min
+                      {s.location ? ` \u00B7 ${s.location}` : ""}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Needs Attention */}

@@ -162,7 +162,49 @@ export async function GET(req: Request) {
     })()
   );
 
-  // ── 4. Meal logs (fueling) ─────────────────────────────────
+  // ── 4. Psychologist sessions ─────────────────────────────
+  promises.push(
+    (async () => {
+      let q = supabase
+        .from("psychologist_sessions")
+        .select("id, session_type, status, starts_at, duration_min, location, notes, psychologist:psychologist_id(name)")
+        .eq("athlete_id", athleteId)
+        .eq("status", "scheduled")
+        .order("starts_at", { ascending: true });
+
+      if (from) q = q.gte("starts_at", `${from}T00:00:00`);
+      if (to) q = q.lte("starts_at", `${to}T23:59:59`);
+
+      const { data } = await q;
+      return (data ?? []).map((s) => {
+        const typeLabel = s.session_type === "virtual" ? "Virtual" : "In-person";
+        const psychName = (s.psychologist as { name?: string } | null)?.name ?? "Psychologist";
+        const parts: string[] = [`${typeLabel} session with ${psychName}`];
+        if (s.location) parts.push(s.location);
+        if (s.notes) parts.push(s.notes);
+
+        const startMs = new Date(s.starts_at).getTime();
+        const endIso = new Date(startMs + (s.duration_min ?? 50) * 60_000).toISOString();
+
+        return {
+          id: s.id,
+          title: `${typeLabel} Session`,
+          category: "sessions" as const,
+          start: s.starts_at,
+          end: endIso,
+          allDay: false,
+          description: parts.join(" · "),
+          metadata: {
+            sessionType: s.session_type,
+            durationMin: s.duration_min,
+            location: s.location,
+          },
+        };
+      });
+    })()
+  );
+
+  // ── 5. Meal logs (fueling) ─────────────────────────────────
   promises.push(
     (async () => {
       let q = supabase
