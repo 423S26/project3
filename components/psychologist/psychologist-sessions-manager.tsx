@@ -224,7 +224,11 @@ export function PsychologistSessionsManager() {
           ) : (
             <div className="divide-y rounded-md border">
               {past.map((s) => (
-                <PsychSessionRow key={s.id} session={s} />
+                <PsychSessionRow
+                  key={s.id}
+                  session={s}
+                  onUpdated={() => loadSessions(filterAthleteId || undefined)}
+                />
               ))}
             </div>
           )}
@@ -242,6 +246,7 @@ function PsychSessionRow({
   onUpdated?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editType, setEditType] = useState(s.session_type);
   const [editDate, setEditDate] = useState(
@@ -281,6 +286,23 @@ function PsychSessionRow({
     }
   }
 
+  async function handleSaveNotes() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/sessions?id=${s.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: editNotes.trim() || null }),
+      });
+      if (res.ok) {
+        setEditingNotes(false);
+        onUpdated?.();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleCancel() {
     if (!confirm("Cancel this session?")) return;
     try {
@@ -302,10 +324,53 @@ function PsychSessionRow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "completed" }),
       });
-      if (res.ok) onUpdated?.();
+      if (res.ok) {
+        setEditingNotes(true);
+        onUpdated?.();
+      }
     } catch {
       /* ignore */
     }
+  }
+
+  if (editingNotes) {
+    return (
+      <div className="space-y-3 p-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <FileText className="h-3.5 w-3.5" />
+          Post-session notes &mdash; {s.athlete?.name ?? "Unknown"}
+        </div>
+
+        <div className="grid gap-3 sm:max-w-xl">
+          <label className="space-y-1">
+            <span className="text-xs font-medium">Notes</span>
+            <textarea
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              rows={3}
+              placeholder="Add your post-session observations, follow-up items, or recommendations..."
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </label>
+
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSaveNotes} disabled={saving}>
+              {saving ? "Saving..." : "Save notes"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setEditNotes(s.notes ?? "");
+                setEditingNotes(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (editing) {
@@ -495,6 +560,20 @@ function PsychSessionRow({
             title="Cancel session"
           >
             <X className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        </div>
+      )}
+
+      {onUpdated && s.status === "completed" && (
+        <div className="flex shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditingNotes(true)}
+            title={s.notes ? "Edit notes" : "Add notes"}
+          >
+            <FileText className="mr-1 h-3.5 w-3.5" />
+            {s.notes ? "Edit notes" : "Add notes"}
           </Button>
         </div>
       )}

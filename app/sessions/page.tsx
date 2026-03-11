@@ -60,6 +60,21 @@ function isPast(s: Session) {
   );
 }
 
+const TIME_SLOTS: { value: string; label: string }[] = (() => {
+  const slots: { value: string; label: string }[] = [];
+  for (let h = 6; h <= 21; h++) {
+    for (const m of [0, 30]) {
+      if (h === 21 && m === 30) break;
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      const period = h < 12 ? "AM" : "PM";
+      const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      slots.push({ value: `${hh}:${mm}`, label: `${displayH}:${mm} ${period}` });
+    }
+  }
+  return slots;
+})();
+
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,13 +257,21 @@ export default function SessionsPage() {
                 </label>
                 <label className="space-y-1">
                   <span className="text-sm font-medium">Time</span>
-                  <input
-                    type="time"
+                  <select
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
                     required
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  />
+                  >
+                    <option value="" disabled>
+                      Select a time
+                    </option>
+                    {TIME_SLOTS.map((slot) => (
+                      <option key={slot.value} value={slot.value}>
+                        {slot.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 
