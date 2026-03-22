@@ -46,6 +46,7 @@ const psychologistNavItems = [
   { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
   { href: "/psychologist/athletes", label: "Athletes", icon: <Users className="h-5 w-5" /> },
   { href: "/psychologist/sessions", label: "Sessions", icon: <CalendarDays className="h-5 w-5" /> },
+  { href: "/psychologist/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
 ];
 
 /** Desktop sidebar with logo, nav links, and user menu. */

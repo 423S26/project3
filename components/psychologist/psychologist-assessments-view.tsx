@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "@/components/auth/session-provider";
 import {
   Card,
   CardContent,
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ClipboardList,
+  CheckCircle,
   Clock,
   Send,
   AlertCircle,
@@ -22,11 +22,10 @@ import {
   Activity,
   Brain,
   Target,
+  RefreshCw,
 } from "lucide-react";
 import {
   PRE_GAME_QUESTIONS,
-  computePreGameScore,
-  isPreGameComplete,
   scoreLabel,
   scoreColor,
 } from "@/lib/pre-game-assessment";
@@ -45,6 +44,11 @@ interface Assessment {
   updated_at: string;
   psychologist?: { name: string; email: string } | null;
   athlete?: { name: string; email: string } | null;
+}
+
+interface CaseloadAthlete {
+  athleteId: string;
+  athlete: { id: string; name: string; email: string };
 }
 
 interface PsychSummary {
@@ -69,58 +73,73 @@ function formatDate(iso: string) {
   });
 }
 
-export default function AssessmentsPage() {
-  const { user } = useSession();
-
-  if (!user) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
-
-  return <AthleteAssessmentsView athleteId={user.id} />;
-}
-
-function AthleteAssessmentsView({ athleteId }: { athleteId: string }) {
+export function PsychologistAssessmentsView() {
+  const [athletes, setAthletes] = useState<CaseloadAthlete[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [dueAt, setDueAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [psychSummary, setPsychSummary] = useState<PsychSummary | null>(null);
   const [physicalSummary, setPhysicalSummary] = useState<PhysicalSummary | null>(null);
 
-  const loadAssessments = useCallback(async () => {
+  useEffect(() => {
+    async function loadAthletes() {
+      try {
+        const res = await fetch("/api/assignments");
+        if (res.ok) {
+          const data = await res.json();
+          setAthletes(data.caseload ?? []);
+        }
+      } catch {
+        /* non-critical */
+      }
+    }
+    loadAthletes();
+  }, []);
+
+  const loadAssessments = useCallback(async (aId: string) => {
+    setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/assessments");
+      const res = await fetch(
+        `/api/assessments?athleteId=${encodeURIComponent(aId)}`
+      );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? "Failed to load assessments");
       }
       setAssessments(await res.json());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load assessments");
+      setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadSummaries = useCallback(async () => {
+  const loadSummaries = useCallback(async (aId: string) => {
+    setPsychSummary(null);
+    setPhysicalSummary(null);
+
     try {
-      const checkInRes = await fetch("/api/checkins");
+      const checkInRes = await fetch(
+        `/api/checkins?athleteId=${encodeURIComponent(aId)}`
+      );
       if (checkInRes.ok) {
         const checkIns = await checkInRes.json();
         if (checkIns.length > 0) {
           const latest = checkIns[checkIns.length - 1];
-          const avg = (a: number, b: number, c: number) =>
-            Math.round(((a + b + c) / 3) * 10) / 10;
-          const overall = avg(latest.mood, 11 - latest.stress, latest.motivation);
+          const overall =
+            Math.round(
+              ((latest.mood + (11 - latest.stress) + latest.motivation) / 3) * 10
+            ) / 10;
           setPsychSummary({
             mood: latest.mood,
             stress: latest.stress,
             motivation: latest.motivation,
-            label: overall >= 7 ? "Good" : overall >= 4 ? "Moderate" : "Low",
+            label:
+              overall >= 7 ? "Good" : overall >= 4 ? "Moderate" : "Low",
           });
         }
       }
@@ -135,7 +154,7 @@ function AthleteAssessmentsView({ athleteId }: { athleteId: string }) {
         .toISOString()
         .split("T")[0];
       const energyRes = await fetch(
-        `/api/energy?from=${from}&to=${to}`
+        `/api/energy?from=${from}&to=${to}&athleteId=${encodeURIComponent(aId)}`
       );
       if (energyRes.ok) {
         const data = await energyRes.json();
@@ -168,21 +187,71 @@ function AthleteAssessmentsView({ athleteId }: { athleteId: string }) {
     }
   }, []);
 
-  useEffect(() => {
-    loadAssessments();
-    loadSummaries();
-  }, [loadAssessments, loadSummaries]);
+  function handleAthleteChange(aId: string) {
+    setSelectedAthleteId(aId);
+    if (aId) {
+      loadAssessments(aId);
+      loadSummaries(aId);
+    } else {
+      setAssessments([]);
+      setPsychSummary(null);
+      setPhysicalSummary(null);
+    }
+  }
+
+  async function handleAssign() {
+    if (!selectedAthleteId) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId: selectedAthleteId,
+          dueAt: dueAt || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "Failed to assign assessment");
+      }
+      setDueAt("");
+      await loadAssessments(selectedAthleteId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to assign");
+    } finally {
+      setAssigning(false);
+    }
+  }
 
   const assigned = assessments.filter((a) => a.status === "assigned");
   const completed = assessments.filter((a) => a.status === "completed");
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Assessments</h1>
-        <p className="text-muted-foreground">
-          Complete assigned assessments and track your readiness
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Assessments</h1>
+          <p className="text-muted-foreground">
+            Assign and review athlete pre-game assessments
+          </p>
+        </div>
+        {selectedAthleteId && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              loadAssessments(selectedAthleteId);
+              loadSummaries(selectedAthleteId);
+            }}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -192,179 +261,118 @@ function AthleteAssessmentsView({ athleteId }: { athleteId: string }) {
         </div>
       )}
 
-      <SummaryCards psychSummary={psychSummary} physicalSummary={physicalSummary} />
-
-      {assigned.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-5 w-5" />
-              Due Assessments ({assigned.length})
-            </CardTitle>
-            <CardDescription>
-              Assessments assigned by your psychologist
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assigned.map((a) => (
-              <AssessmentForm
-                key={a.id}
-                assessment={a}
-                onCompleted={loadAssessments}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardList className="h-5 w-5" />
-            Assessment History ({completed.length})
-          </CardTitle>
+          <CardTitle className="text-lg">Select Athlete</CardTitle>
           <CardDescription>
-            Your completed assessments
+            Choose an athlete from your caseload to assign or review assessments
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : completed.length === 0 ? (
-            <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed text-center text-sm text-muted-foreground">
-              {assigned.length === 0
-                ? "No assessments yet. Your psychologist will assign them when needed."
-                : "Complete your due assessments above to see them here."}
-            </div>
-          ) : (
-            <div className="divide-y rounded-md border">
-              {completed.map((a) => (
-                <CompletedAssessmentRow key={a.id} assessment={a} />
-              ))}
+        <CardContent className="space-y-4">
+          <select
+            value={selectedAthleteId}
+            onChange={(e) => handleAthleteChange(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm sm:max-w-xs"
+          >
+            <option value="">Select an athlete...</option>
+            {athletes.map((a) => (
+              <option key={a.athleteId} value={a.athleteId}>
+                {a.athlete.name}
+              </option>
+            ))}
+          </select>
+
+          {selectedAthleteId && (
+            <div className="flex flex-wrap items-end gap-3 rounded-md border p-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">
+                  Assign Pre-Game Assessment
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="datetime-local"
+                    value={dueAt}
+                    onChange={(e) => setDueAt(e.target.value)}
+                    placeholder="Due date (optional)"
+                    className="rounded-md border bg-background px-3 py-2 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleAssign}
+                    disabled={assigning}
+                  >
+                    <Send className="mr-1 h-3.5 w-3.5" />
+                    {assigning ? "Assigning..." : "Assign"}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-function AssessmentForm({
-  assessment,
-  onCompleted,
-}: {
-  assessment: Assessment;
-  onCompleted: () => void;
-}) {
-  const [answers, setAnswers] = useState<PreGameAnswers>({});
-  const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+      {selectedAthleteId && (
+        <>
+          <SummaryCards
+            psychSummary={psychSummary}
+            physicalSummary={physicalSummary}
+          />
 
-  async function handleSubmit() {
-    if (!isPreGameComplete(answers)) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/assessments?id=${assessment.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-      });
-      if (res.ok) {
-        onCompleted();
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
+          {assigned.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="h-5 w-5" />
+                  Pending ({assigned.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y rounded-md border">
+                  {assigned.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between p-3">
+                      <div className="space-y-1">
+                        <p className="font-medium">Pre-Game Readiness</p>
+                        <p className="text-xs text-muted-foreground">
+                          Assigned {formatDate(a.created_at)}
+                          {a.due_at && ` · Due ${formatDate(a.due_at)}`}
+                        </p>
+                      </div>
+                      <Badge className="text-xs">Awaiting</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-  const previewScore = isPreGameComplete(answers)
-    ? computePreGameScore(answers)
-    : null;
-
-  if (!expanded) {
-    return (
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div className="space-y-1">
-          <p className="font-medium">Pre-Game Readiness Assessment</p>
-          <p className="text-xs text-muted-foreground">
-            Assigned by {assessment.psychologist?.name ?? "your psychologist"}
-            {assessment.due_at && ` · Due ${formatDate(assessment.due_at)}`}
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setExpanded(true)}>
-          Start
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <div className="flex items-center justify-between">
-        <p className="font-medium">Pre-Game Readiness Assessment</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setExpanded(false)}
-        >
-          Collapse
-        </Button>
-      </div>
-
-      {PRE_GAME_QUESTIONS.map((q) => (
-        <div key={q.id} className="space-y-2">
-          <label className="text-sm font-medium">{q.text}</label>
-          <div className="flex items-center gap-3">
-            <span className="w-24 text-xs text-muted-foreground">
-              {q.minLabel}
-            </span>
-            <input
-              type="range"
-              min={q.min}
-              max={q.max}
-              value={answers[q.id] ?? 5}
-              onChange={(e) =>
-                setAnswers((prev) => ({
-                  ...prev,
-                  [q.id]: Number(e.target.value),
-                }))
-              }
-              className="flex-1"
-            />
-            <span className="w-24 text-right text-xs text-muted-foreground">
-              {q.maxLabel}
-            </span>
-            <span className="w-8 text-center text-sm font-medium">
-              {answers[q.id] ?? 5}
-            </span>
-          </div>
-        </div>
-      ))}
-
-      {previewScore !== null && (
-        <div className="rounded-md bg-muted/50 p-3 text-center">
-          <p className="text-sm text-muted-foreground">Readiness Score</p>
-          <p className={`text-2xl font-bold ${scoreColor(previewScore)}`}>
-            {previewScore}%
-          </p>
-          <p className={`text-sm font-medium ${scoreColor(previewScore)}`}>
-            {scoreLabel(previewScore)}
-          </p>
-        </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CheckCircle className="h-5 w-5" />
+                Completed ({completed.length})
+              </CardTitle>
+              <CardDescription>
+                Review athlete assessment submissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : completed.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No completed assessments for this athlete yet.
+                </p>
+              ) : (
+                <div className="divide-y rounded-md border">
+                  {completed.map((a) => (
+                    <CompletedAssessmentRow key={a.id} assessment={a} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
-
-      <div className="flex gap-2">
-        <Button
-          onClick={handleSubmit}
-          disabled={saving || !isPreGameComplete(answers)}
-        >
-          <Send className="mr-2 h-4 w-4" />
-          {saving ? "Submitting..." : "Submit Assessment"}
-        </Button>
-        <Button variant="ghost" onClick={() => setExpanded(false)}>
-          Cancel
-        </Button>
-      </div>
     </div>
   );
 }
@@ -384,8 +392,8 @@ function CompletedAssessmentRow({ assessment }: { assessment: Assessment }) {
           </div>
           <p className="text-xs text-muted-foreground">
             {formatDate(assessment.updated_at)}
-            {assessment.psychologist &&
-              ` · Assigned by ${assessment.psychologist.name}`}
+            {assessment.athlete &&
+              ` · ${assessment.athlete.name}`}
           </p>
         </div>
         <div className="flex items-center gap-3">

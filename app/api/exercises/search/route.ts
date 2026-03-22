@@ -49,8 +49,10 @@ export async function GET(req: Request) {
 
       const fallbackData = await fallbackRes.json();
       const exercises = normalizeWgerList(fallbackData.results ?? []);
-      const filtered = exercises.filter((e) =>
-        e.name.toLowerCase().includes(query.toLowerCase())
+      const filtered = dedupeById(
+        exercises.filter((e) =>
+          e.name.toLowerCase().includes(query.toLowerCase())
+        )
       );
       return NextResponse.json({ exercises: filtered });
     }
@@ -59,14 +61,16 @@ export async function GET(req: Request) {
 
     // The search endpoint returns { suggestions: [...] }
     const suggestions = data.suggestions ?? [];
-    const exercises = suggestions.map((s: WgerSearchSuggestion) => ({
-      providerExerciseId: String(s.data?.id ?? s.id ?? ""),
-      name: s.data?.name ?? s.name ?? "Unknown",
-      category: getCategoryFromId(s.data?.category) ?? null,
-      muscles: (s.data?.muscles ?? []).map((m: WgerMuscle) => m.name_en ?? m.name ?? ""),
-      equipment: (s.data?.equipment ?? []).map((e: WgerEquipment) => e.name ?? ""),
-      description: s.data?.description ?? null,
-    }));
+    const exercises = dedupeById(
+      suggestions.map((s: WgerSearchSuggestion) => ({
+        providerExerciseId: String(s.data?.id ?? s.id ?? ""),
+        name: s.data?.name ?? s.name ?? "Unknown",
+        category: getCategoryFromId(s.data?.category) ?? null,
+        muscles: (s.data?.muscles ?? []).map((m: WgerMuscle) => m.name_en ?? m.name ?? ""),
+        equipment: (s.data?.equipment ?? []).map((e: WgerEquipment) => e.name ?? ""),
+        description: s.data?.description ?? null,
+      }))
+    );
 
     return NextResponse.json({ exercises });
   } catch (err) {
@@ -122,6 +126,16 @@ function normalizeWgerList(results: WgerExercise[]) {
       equipment: [] as string[],
       description: e.description ?? null,
     }));
+}
+
+/** Remove duplicate exercises, keeping the first occurrence of each provider ID */
+function dedupeById<T extends { providerExerciseId: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.providerExerciseId)) return false;
+    seen.add(item.providerExerciseId);
+    return true;
+  });
 }
 
 /** Map wger category IDs to readable names */

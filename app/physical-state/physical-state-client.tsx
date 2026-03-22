@@ -1142,9 +1142,9 @@ function WorkoutSessionForm({
                       />
                       {exSearchIndex === exI && exSearchResults.length > 0 && (
                         <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-md border bg-background shadow-lg">
-                          {exSearchResults.map((r) => (
+                          {exSearchResults.map((r, idx) => (
                             <button
-                              key={r.providerExerciseId}
+                              key={`${r.providerExerciseId}-${idx}`}
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => selectExResult(r, exI)}
@@ -1351,9 +1351,9 @@ function TemplateForm({ onSaved }: { onSaved: () => void }) {
                     {/* Search results dropdown */}
                     {searchIndex === i && searchResults.length > 0 && (
                       <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-md border bg-background shadow-lg">
-                        {searchResults.map((r) => (
+                        {searchResults.map((r, idx) => (
                           <button
-                            key={r.providerExerciseId}
+                            key={`${r.providerExerciseId}-${idx}`}
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => selectSearchResult(r, i)}
