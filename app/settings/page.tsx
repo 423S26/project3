@@ -9,6 +9,7 @@ import { Settings, Moon, User, Bell, Shield, Download, Target, MessageSquarePlus
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/supabase/server";
 import { AthleteProfileEditor } from "@/components/settings/athlete-profile-editor";
+import { DarkModeToggle } from "@/components/settings/dark-mode-toggle";
 
 export default async function SettingsPage() {
   const user = await getAuthUser();
@@ -63,17 +64,7 @@ export default async function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Dark Mode</p>
-                <p className="text-sm text-muted-foreground">
-                  Toggle dark theme for the app
-                </p>
-              </div>
-              <Button variant="outline" disabled>
-                Coming in Sprint 6
-              </Button>
-            </div>
+            <DarkModeToggle />
           </CardContent>
         </Card>
 
