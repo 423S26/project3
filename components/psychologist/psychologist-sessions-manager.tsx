@@ -22,7 +22,23 @@ import {
   Check,
   X,
   Filter,
+  Plus,
 } from "lucide-react";
+
+const TIME_SLOTS: { value: string; label: string }[] = (() => {
+  const slots: { value: string; label: string }[] = [];
+  for (let h = 6; h <= 21; h++) {
+    for (const m of [0, 30]) {
+      if (h === 21 && m === 30) break;
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      const period = h < 12 ? "AM" : "PM";
+      const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      slots.push({ value: `${hh}:${mm}`, label: `${displayH}:${mm} ${period}` });
+    }
+  }
+  return slots;
+})();
 
 interface Session {
   id: string;
@@ -79,6 +95,17 @@ export function PsychologistSessionsManager() {
   const [error, setError] = useState<string | null>(null);
   const [filterAthleteId, setFilterAthleteId] = useState<string>("");
 
+  const [showForm, setShowForm] = useState(false);
+  const [formAthleteId, setFormAthleteId] = useState("");
+  const [formType, setFormType] = useState<"virtual" | "in_person">("virtual");
+  const [formDate, setFormDate] = useState("");
+  const [formTime, setFormTime] = useState("");
+  const [formDuration, setFormDuration] = useState(50);
+  const [formLocation, setFormLocation] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSaving, setFormSaving] = useState(false);
+
   const loadSessions = useCallback(async (athleteId?: string) => {
     setError(null);
     try {
@@ -121,6 +148,49 @@ export function PsychologistSessionsManager() {
     loadSessions(athleteId || undefined);
   }
 
+  async function handleSchedule(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    if (!formAthleteId) {
+      setFormError("Please select an athlete.");
+      return;
+    }
+    setFormSaving(true);
+    try {
+      const startsAt = new Date(`${formDate}T${formTime}`).toISOString();
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId: formAthleteId,
+          sessionType: formType,
+          startsAt,
+          durationMin: formDuration,
+          location: formLocation.trim() || null,
+          notes: formNotes.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "Failed to schedule session");
+      }
+      setShowForm(false);
+      setFormAthleteId("");
+      setFormType("virtual");
+      setFormDate("");
+      setFormTime("");
+      setFormDuration(50);
+      setFormLocation("");
+      setFormNotes("");
+      setLoading(true);
+      loadSessions(filterAthleteId || undefined);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to schedule session");
+    } finally {
+      setFormSaving(false);
+    }
+  }
+
   const upcoming = sessions.filter(isUpcoming);
   const past = sessions.filter(isPast);
 
@@ -134,18 +204,168 @@ export function PsychologistSessionsManager() {
             View and manage your scheduled athlete sessions
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setLoading(true);
-            loadSessions(filterAthleteId || undefined);
-          }}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowForm((p) => !p)}>
+            {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+            {showForm ? "Close" : "Schedule session"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setLoading(true);
+              loadSessions(filterAthleteId || undefined);
+            }}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Scheduling form */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Schedule a new session</CardTitle>
+            <CardDescription>
+              Book a session with one of your assigned athletes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSchedule} className="grid gap-4 sm:max-w-xl">
+              <label className="space-y-1">
+                <span className="text-sm font-medium">Athlete</span>
+                <select
+                  value={formAthleteId}
+                  onChange={(e) => setFormAthleteId(e.target.value)}
+                  required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="" disabled>Select an athlete</option>
+                  {athletes.map((a) => (
+                    <option key={a.athleteId} value={a.athleteId}>
+                      {a.athlete.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Session type</legend>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormType("virtual")}
+                    className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                      formType === "virtual"
+                        ? "border-primary bg-primary/5 font-medium text-primary"
+                        : "hover:bg-accent"
+                    }`}
+                  >
+                    <Video className="h-4 w-4" />
+                    Virtual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormType("in_person")}
+                    className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                      formType === "in_person"
+                        ? "border-primary bg-primary/5 font-medium text-primary"
+                        : "hover:bg-accent"
+                    }`}
+                  >
+                    <MapPin className="h-4 w-4" />
+                    In-person
+                  </button>
+                </div>
+              </fieldset>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Date</span>
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    required
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Time</span>
+                  <select
+                    value={formTime}
+                    onChange={(e) => setFormTime(e.target.value)}
+                    required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="" disabled>Select a time</option>
+                    {TIME_SLOTS.map((slot) => (
+                      <option key={slot.value} value={slot.value}>
+                        {slot.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="space-y-1">
+                <span className="text-sm font-medium">Duration (minutes)</span>
+                <input
+                  type="number"
+                  value={formDuration}
+                  onChange={(e) => setFormDuration(Number(e.target.value))}
+                  min={15}
+                  max={120}
+                  step={5}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+
+              {formType === "in_person" && (
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Location</span>
+                  <input
+                    type="text"
+                    value={formLocation}
+                    onChange={(e) => setFormLocation(e.target.value)}
+                    placeholder="e.g. Athletic Center, Room 204"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </label>
+              )}
+
+              <label className="space-y-1">
+                <span className="text-sm font-medium">
+                  Notes <span className="font-normal text-muted-foreground">(optional)</span>
+                </span>
+                <textarea
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Session agenda or pre-session notes..."
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+
+              {formError && (
+                <p className="text-sm text-destructive">{formError}</p>
+              )}
+
+              <div className="flex gap-2">
+                <Button type="submit" disabled={formSaving}>
+                  {formSaving ? "Scheduling..." : "Schedule session"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Athlete filter */}
       {athletes.length > 0 && (
@@ -154,7 +374,7 @@ export function PsychologistSessionsManager() {
           <select
             value={filterAthleteId}
             onChange={(e) => handleFilterChange(e.target.value)}
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="">All athletes</option>
             {athletes.map((a) => (
@@ -191,7 +411,7 @@ export function PsychologistSessionsManager() {
               No upcoming sessions.
               {filterAthleteId
                 ? " Try selecting a different athlete or clearing the filter."
-                : " Sessions booked by athletes will appear here."}
+                : " Schedule a session or wait for athletes to book one."}
             </div>
           ) : (
             <div className="divide-y rounded-md border">
@@ -418,7 +638,7 @@ function PsychSessionRow({
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
               />
             </label>
             <label className="space-y-1">
@@ -427,7 +647,7 @@ function PsychSessionRow({
                 type="time"
                 value={editTime}
                 onChange={(e) => setEditTime(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
               />
             </label>
             <label className="space-y-1">

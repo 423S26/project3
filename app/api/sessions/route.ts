@@ -64,8 +64,10 @@ export async function GET(req: Request) {
 
 /**
  * POST /api/sessions
- * Athlete creates a new session with their assigned psychologist.
- * Body: { sessionType, startsAt, durationMin?, location?, notes? }
+ * Athletes create a session with their assigned psychologist.
+ * Psychologists create a session for one of their assigned athletes.
+ * Body: { sessionType, startsAt, durationMin?, location?, notes?, athleteId? }
+ *   - athleteId is required when the caller is a psychologist.
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -83,31 +85,13 @@ export async function POST(req: Request) {
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "ATHLETE") {
-    return NextResponse.json(
-      { error: "Only athletes can schedule sessions" },
-      { status: 403 }
-    );
-  }
-
-  const { data: assignment } = await supabase
-    .from("psychologist_athletes")
-    .select("psychologist_id")
-    .eq("athlete_id", user.id)
-    .maybeSingle();
-
-  if (!assignment?.psychologist_id) {
-    return NextResponse.json(
-      {
-        error:
-          "You are not assigned to a psychologist yet. Please contact your team administrator.",
-      },
-      { status: 400 }
-    );
+  const role = profile?.role;
+  if (role !== "ATHLETE" && role !== "PSYCHOLOGIST") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json();
-  const { sessionType, startsAt, durationMin, location, notes } = body;
+  const { sessionType, startsAt, durationMin, location, notes, athleteId } = body;
 
   if (!sessionType || !startsAt) {
     return NextResponse.json(
@@ -123,11 +107,53 @@ export async function POST(req: Request) {
     );
   }
 
+  let resolvedAthleteId: string;
+  let resolvedPsychologistId: string;
+
+  if (role === "ATHLETE") {
+    resolvedAthleteId = user.id;
+    const { data: assignment } = await supabase
+      .from("psychologist_athletes")
+      .select("psychologist_id")
+      .eq("athlete_id", user.id)
+      .maybeSingle();
+
+    if (!assignment?.psychologist_id) {
+      return NextResponse.json(
+        { error: "You are not assigned to a psychologist yet. Please contact your team administrator." },
+        { status: 400 }
+      );
+    }
+    resolvedPsychologistId = assignment.psychologist_id;
+  } else {
+    if (!athleteId) {
+      return NextResponse.json(
+        { error: "athleteId is required when scheduling as a psychologist" },
+        { status: 400 }
+      );
+    }
+    const { data: assignment } = await supabase
+      .from("psychologist_athletes")
+      .select("athlete_id")
+      .eq("psychologist_id", user.id)
+      .eq("athlete_id", athleteId)
+      .maybeSingle();
+
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "This athlete is not in your caseload" },
+        { status: 403 }
+      );
+    }
+    resolvedAthleteId = athleteId;
+    resolvedPsychologistId = user.id;
+  }
+
   const { data, error } = await supabase
     .from("psychologist_sessions")
     .insert({
-      athlete_id: user.id,
-      psychologist_id: assignment.psychologist_id,
+      athlete_id: resolvedAthleteId,
+      psychologist_id: resolvedPsychologistId,
       session_type: sessionType,
       starts_at: startsAt,
       duration_min: durationMin ?? 50,

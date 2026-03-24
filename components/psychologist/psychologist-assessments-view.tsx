@@ -294,7 +294,7 @@ export function PsychologistAssessmentsView() {
                     value={dueAt}
                     onChange={(e) => setDueAt(e.target.value)}
                     placeholder="Due date (optional)"
-                    className="rounded-md border bg-background px-3 py-2 text-sm"
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
                   />
                   <Button
                     size="sm"

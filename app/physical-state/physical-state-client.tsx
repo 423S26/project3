@@ -753,7 +753,7 @@ function RecoveryForm({ onSaved }: { onSaved: () => void }) {
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-sm font-medium">Date</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm" required />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground" required />
           </label>
           <label className="space-y-1">
             <span className="text-sm font-medium">Sleep (hours)</span>
