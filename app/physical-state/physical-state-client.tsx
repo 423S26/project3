@@ -105,6 +105,11 @@ function dayKey(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
 function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -114,8 +119,9 @@ function daysAgo(n: number) {
 function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | null; isPsychologist: boolean }) {
   const [loading, setLoading] = useState(true);
   const [sleepData, setSleepData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
-  const [loadData, setLoadData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
-  const [energyData, setEnergyData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+  const [hrvData, setHrvData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+  const [hrData, setHrData] = useState<{ daily: number[]; avg: number; delta: number }>({ daily: [], avg: 0, delta: 0 });
+  const [latestRecovery, setLatestRecovery] = useState<RecoveryEntry | null>(null);
 
   const athleteParam = isPsychologist ? athleteId ?? undefined : undefined;
 
@@ -125,14 +131,13 @@ function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | nul
 
     const today = new Date();
     const from60 = dayKey(daysAgo(59));
-    const from30 = dayKey(daysAgo(29));
     const toStr = dayKey(today);
 
-    const [recovery, sessions, energy] = await Promise.all([
-      fetchRecovery(from60, toStr, athleteParam),
-      fetchWorkoutSessions(from60, toStr, athleteParam),
-      fetchEnergy(from60, toStr, athleteParam),
-    ]);
+    const recovery = await fetchRecovery(from60, toStr, athleteParam);
+
+    // Find the latest recovery entry
+    const sorted = [...recovery].sort((a, b) => b.date.localeCompare(a.date));
+    setLatestRecovery(sorted.length > 0 ? sorted[0] : null);
 
     // Build date-keyed maps for current 30d and prior 30d
     const current30Start = daysAgo(29);
@@ -154,43 +159,41 @@ function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | nul
     const sleepAvgCurrent = sleepCurrent.reduce((a, b) => a + b, 0) / Math.max(sleepCurrent.filter(v => v > 0).length, 1);
     const sleepAvgPrior = sleepPrior.reduce((a, b) => a + b, 0) / Math.max(sleepPrior.filter(v => v > 0).length, 1);
 
-    // --- TRAINING LOAD (duration × RPE) ---
-    const loadByDate = new Map<string, number>();
-    sessions.forEach((s) => {
-      const d = s.started_at.split("T")[0];
-      const sessionLoad = (s.duration_min ?? 30) * (s.rpe ?? 5);
-      loadByDate.set(d, (loadByDate.get(d) ?? 0) + sessionLoad);
+    // --- HRV ---
+    const hrvByDate = new Map<string, number>();
+    recovery.forEach((r) => {
+      if (r.hrv_ms != null) hrvByDate.set(r.date, r.hrv_ms);
     });
-    const loadCurrent: number[] = [];
-    const loadPrior: number[] = [];
+    const hrvCurrent: number[] = [];
+    const hrvPrior: number[] = [];
     for (let i = 0; i < 30; i++) {
       const cd = dayKey(new Date(current30Start.getTime() + i * 86400000));
       const pd = dayKey(new Date(prior30Start.getTime() + i * 86400000));
-      loadCurrent.push(loadByDate.get(cd) ?? 0);
-      loadPrior.push(loadByDate.get(pd) ?? 0);
+      hrvCurrent.push(hrvByDate.get(cd) ?? 0);
+      hrvPrior.push(hrvByDate.get(pd) ?? 0);
     }
-    const loadSumCurrent = loadCurrent.reduce((a, b) => a + b, 0);
-    const loadSumPrior = loadPrior.reduce((a, b) => a + b, 0);
-    const loadAvgCurrent = loadSumCurrent / 30;
-    const loadAvgPrior = loadSumPrior / 30;
+    const hrvAvgCurrent = hrvCurrent.reduce((a, b) => a + b, 0) / Math.max(hrvCurrent.filter(v => v > 0).length, 1);
+    const hrvAvgPrior = hrvPrior.reduce((a, b) => a + b, 0) / Math.max(hrvPrior.filter(v => v > 0).length, 1);
 
-    // --- ENERGY NET ---
-    const netByDate = new Map<string, number>();
-    energy.days.forEach((d) => { netByDate.set(d.date, d.net); });
-    const netCurrent: number[] = [];
-    const netPrior: number[] = [];
+    // --- RESTING HR ---
+    const restingHrByDate = new Map<string, number>();
+    recovery.forEach((r) => {
+      if (r.resting_hr != null) restingHrByDate.set(r.date, r.resting_hr);
+    });
+    const hrCurrent: number[] = [];
+    const hrPrior: number[] = [];
     for (let i = 0; i < 30; i++) {
       const cd = dayKey(new Date(current30Start.getTime() + i * 86400000));
       const pd = dayKey(new Date(prior30Start.getTime() + i * 86400000));
-      netCurrent.push(netByDate.get(cd) ?? 0);
-      netPrior.push(netByDate.get(pd) ?? 0);
+      hrCurrent.push(restingHrByDate.get(cd) ?? 0);
+      hrPrior.push(restingHrByDate.get(pd) ?? 0);
     }
-    const netAvgCurrent = netCurrent.reduce((a, b) => a + b, 0) / Math.max(netCurrent.filter(v => v !== 0).length, 1);
-    const netAvgPrior = netPrior.reduce((a, b) => a + b, 0) / Math.max(netPrior.filter(v => v !== 0).length, 1);
+    const hrAvgCurrent = hrCurrent.reduce((a, b) => a + b, 0) / Math.max(hrCurrent.filter(v => v > 0).length, 1);
+    const hrAvgPrior = hrPrior.reduce((a, b) => a + b, 0) / Math.max(hrPrior.filter(v => v > 0).length, 1);
 
     setSleepData({ daily: sleepCurrent, avg: sleepAvgCurrent, delta: sleepAvgCurrent - sleepAvgPrior });
-    setLoadData({ daily: loadCurrent, avg: loadAvgCurrent, delta: loadAvgCurrent - loadAvgPrior });
-    setEnergyData({ daily: netCurrent, avg: netAvgCurrent, delta: netAvgCurrent - netAvgPrior });
+    setHrvData({ daily: hrvCurrent, avg: hrvAvgCurrent, delta: hrvAvgCurrent - hrvAvgPrior });
+    setHrData({ daily: hrCurrent, avg: hrAvgCurrent, delta: hrAvgCurrent - hrAvgPrior });
     setLoading(false);
   }, [athleteId, athleteParam]);
 
@@ -211,9 +214,9 @@ function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | nul
       <div className="grid gap-4 sm:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <Card key={i}>
-            <CardContent className="py-5 space-y-3">
+            <CardContent className="py-6 space-y-3">
               <SkeletonPulse className="h-3 w-20" />
-              <SkeletonPulse className="h-7 w-16" />
+              <SkeletonPulse className="h-9 w-24" />
               <SkeletonPulse className="h-8 w-full" />
             </CardContent>
           </Card>
@@ -222,61 +225,72 @@ function InsightsTrends({ athleteId, isPsychologist }: { athleteId: string | nul
     );
   }
 
+  const latestDate = latestRecovery ? formatDate(latestRecovery.date) : "No data";
+
   const tiles = [
     {
-      label: "Avg Sleep",
-      value: `${sleepData.avg.toFixed(1)}h`,
+      label: "Sleep",
+      subLabel: latestDate,
+      value: latestRecovery?.sleep_minutes != null ? `${(latestRecovery.sleep_minutes / 60).toFixed(1)}h` : "--",
+      avgLabel: `30d avg: ${sleepData.avg.toFixed(1)}h`,
       delta: sleepData.delta,
-      deltaFmt: `${sleepData.delta >= 0 ? "+" : ""}${sleepData.delta.toFixed(1)}h`,
       daily: sleepData.daily,
       color: "hsl(270, 70%, 60%)",
-      icon: <Moon className="h-4 w-4 text-violet-500" />,
+      icon: <Moon className="h-5 w-5 text-violet-500" />,
       goodUp: true,
     },
     {
-      label: "Avg Training Load",
-      value: Math.round(loadData.avg).toString(),
-      delta: loadData.delta,
-      deltaFmt: `${loadData.delta >= 0 ? "+" : ""}${Math.round(loadData.delta)}`,
-      daily: loadData.daily,
-      color: "hsl(221, 83%, 53%)",
-      icon: <Dumbbell className="h-4 w-4 text-blue-500" />,
-      goodUp: true,
-    },
-    {
-      label: "Avg Energy Net",
-      value: `${Math.round(energyData.avg)} cal`,
-      delta: energyData.delta,
-      deltaFmt: `${energyData.delta >= 0 ? "+" : ""}${Math.round(energyData.delta)}`,
-      daily: energyData.daily,
+      label: "HRV",
+      subLabel: latestDate,
+      value: latestRecovery?.hrv_ms != null ? `${latestRecovery.hrv_ms} ms` : "--",
+      avgLabel: `30d avg: ${hrvData.avg.toFixed(0)} ms`,
+      delta: hrvData.delta,
+      daily: hrvData.daily,
       color: "hsl(142, 76%, 36%)",
-      icon: <Flame className="h-4 w-4 text-green-500" />,
+      icon: <Activity className="h-5 w-5 text-green-500" />,
       goodUp: true,
+    },
+    {
+      label: "Resting HR",
+      subLabel: latestDate,
+      value: latestRecovery?.resting_hr != null ? `${latestRecovery.resting_hr} bpm` : "--",
+      avgLabel: `30d avg: ${hrData.avg.toFixed(0)} bpm`,
+      delta: hrData.delta,
+      daily: hrData.daily,
+      color: "hsl(0, 72%, 51%)",
+      icon: <Heart className="h-5 w-5 text-red-500" />,
+      goodUp: false,
     },
   ];
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">30-Day Trends</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">Today&apos;s Snapshot</h2>
+        {latestRecovery && (
+          <span className="text-xs text-muted-foreground">Last entry: {latestDate}</span>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {tiles.map((t) => {
           const isPositive = t.goodUp ? t.delta >= 0 : t.delta <= 0;
           return (
             <Card key={t.label} className="overflow-hidden">
-              <CardContent className="py-4 space-y-2">
+              <CardContent className="py-5 space-y-3">
                 <div className="flex items-center gap-2">
                   {t.icon}
-                  <span className="text-xs font-medium text-muted-foreground">{t.label}</span>
+                  <span className="text-sm font-medium text-muted-foreground">{t.label}</span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{t.value}</span>
+                <div>
+                  <span className="text-3xl font-bold">{t.value}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{t.avgLabel}</span>
                   <span className={`text-xs font-medium ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
-                    {t.deltaFmt}
+                    {t.delta >= 0 ? "+" : ""}{t.label === "Sleep" ? t.delta.toFixed(1) + "h" : Math.round(t.delta)}
                   </span>
                 </div>
-                <Sparkline data={t.daily} color={t.color} width={160} height={28} />
+                <Sparkline data={t.daily} color={t.color} width={200} height={32} />
               </CardContent>
             </Card>
           );
@@ -301,8 +315,8 @@ export function PhysicalStateClient() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Physical State</h1>
-        <p className="text-muted-foreground">Track your recovery, training load, and fueling</p>
+        <h1 className="text-2xl font-bold tracking-tight">Physical State</h1>
+        <p className="text-sm text-muted-foreground">Recovery, training, and fueling at a glance</p>
       </div>
 
       {/* Integration feedback */}
@@ -323,11 +337,8 @@ export function PhysicalStateClient() {
         </div>
       )}
 
-      {/* 30-Day Insights */}
+      {/* Today's Snapshot — key recovery metrics */}
       <InsightsTrends athleteId={activeAthleteId} isPsychologist={isPsychologist} />
-
-      {/* Energy & Readiness card */}
-      <EnergyReadinessCard athleteId={activeAthleteId} isPsychologist={isPsychologist} />
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-xl border bg-muted/40 p-1 shadow-sm">
@@ -351,6 +362,9 @@ export function PhysicalStateClient() {
       {activeTab === "recovery" && <RecoveryTab athleteId={activeAthleteId} isPsychologist={isPsychologist} />}
       {activeTab === "training" && <TrainingTab athleteId={activeAthleteId} isPsychologist={isPsychologist} />}
       {activeTab === "fueling" && <FuelingTab athleteId={activeAthleteId} isPsychologist={isPsychologist} />}
+
+      {/* Energy & Readiness — supplementary detail */}
+      <EnergyReadinessCard athleteId={activeAthleteId} isPsychologist={isPsychologist} />
     </div>
   );
 }
@@ -580,80 +594,48 @@ function RecoveryTab({ athleteId, isPsychologist }: { athleteId: string | null; 
 
   return (
     <div className="space-y-4">
-      {/* Wearable connections */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Link2 className="h-5 w-5" />
-            Wearable Connections
-          </CardTitle>
-          <CardDescription>Connect your wearable to auto-sync recovery data</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {/* Fitbit */}
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-blue-500" />
-                <span className="font-medium">Fitbit</span>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" asChild>
-                  <a href="/api/integrations/fitbit/authorize">Connect</a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSync("fitbit")}
-                  disabled={syncing === "fitbit"}
-                >
-                  <RefreshCw className={`h-3 w-3 ${syncing === "fitbit" ? "animate-spin" : ""}`} />
-                </Button>
-              </div>
-            </div>
-
-            {/* Oura */}
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <Moon className="h-5 w-5 text-purple-500" />
-                <span className="font-medium">Oura</span>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" asChild>
-                  <a href="/api/integrations/oura/authorize">Connect</a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSync("oura")}
-                  disabled={syncing === "oura"}
-                >
-                  <RefreshCw className={`h-3 w-3 ${syncing === "oura" ? "animate-spin" : ""}`} />
-                </Button>
-              </div>
-            </div>
-
-            {/* WHOOP – coming soon */}
-            <div className="flex items-center justify-between rounded-lg border border-dashed p-3 opacity-60">
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-yellow-500" />
-                <span className="font-medium">WHOOP</span>
-              </div>
-              <Badge variant="outline" className="text-xs">Coming soon</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Manual entry toggle */}
-      {!isPsychologist && (
-        <div className="flex justify-end">
-          <Button size="sm" onClick={() => setShowForm((p) => !p)}>
+      {/* Compact wearable sync row + manual entry */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+        <Link2 className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Sync:</span>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/api/integrations/fitbit/authorize" className="gap-1.5">
+            <Heart className="h-3.5 w-3.5 text-blue-500" />
+            Fitbit
+          </a>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSync("fitbit")}
+          disabled={syncing === "fitbit"}
+          className="px-1.5"
+        >
+          <RefreshCw className={`h-3 w-3 ${syncing === "fitbit" ? "animate-spin" : ""}`} />
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/api/integrations/oura/authorize" className="gap-1.5">
+            <Moon className="h-3.5 w-3.5 text-purple-500" />
+            Oura
+          </a>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSync("oura")}
+          disabled={syncing === "oura"}
+          className="px-1.5"
+        >
+          <RefreshCw className={`h-3 w-3 ${syncing === "oura" ? "animate-spin" : ""}`} />
+        </Button>
+        <Badge variant="outline" className="text-xs opacity-60">WHOOP (soon)</Badge>
+        {!isPsychologist && (
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => setShowForm((p) => !p)}>
             <Plus className="h-4 w-4" />
-            {showForm ? "Cancel" : "Log Recovery Manually"}
+            {showForm ? "Cancel" : "Log Manually"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {showForm && <RecoveryForm onSaved={() => { setShowForm(false); load(); emitSaved(); }} />}
 
@@ -674,37 +656,41 @@ function RecoveryTab({ athleteId, isPsychologist }: { athleteId: string | null; 
           ) : (
             <div className="space-y-2">
               {entries.slice(0, 14).map((e) => (
-                <div key={e.id} className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{e.date}</span>
-                      <Badge variant="recovery" className="text-xs">{e.source}</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {e.sleep_minutes != null && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-                          <Moon className="h-3 w-3" />
-                          {Math.round(e.sleep_minutes / 60 * 10) / 10}h
-                        </span>
-                      )}
-                      {e.sleep_score != null && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-                          Score {e.sleep_score}
-                        </span>
-                      )}
-                      {e.resting_hr != null && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300">
-                          <Heart className="h-3 w-3" />
-                          {e.resting_hr} bpm
-                        </span>
-                      )}
-                      {e.hrv_ms != null && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
-                          HRV {e.hrv_ms}ms
-                        </span>
-                      )}
-                    </div>
-                    {e.notes && <p className="text-xs text-muted-foreground">{e.notes}</p>}
+                <div key={e.id} className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                  {/* Left: key metrics displayed prominently */}
+                  <div className="flex items-center gap-5">
+                    {e.sleep_minutes != null && (
+                      <div className="text-center min-w-[48px]">
+                        <p className="text-lg font-bold text-violet-600 dark:text-violet-400">
+                          {(e.sleep_minutes / 60).toFixed(1)}h
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Sleep</p>
+                      </div>
+                    )}
+                    {e.hrv_ms != null && (
+                      <div className="text-center min-w-[48px]">
+                        <p className="text-lg font-bold text-green-600 dark:text-green-400">{e.hrv_ms}</p>
+                        <p className="text-[10px] text-muted-foreground">HRV ms</p>
+                      </div>
+                    )}
+                    {e.resting_hr != null && (
+                      <div className="text-center min-w-[48px]">
+                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{e.resting_hr}</p>
+                        <p className="text-[10px] text-muted-foreground">RHR bpm</p>
+                      </div>
+                    )}
+                    {e.sleep_score != null && (
+                      <div className="text-center min-w-[48px]">
+                        <p className="text-lg font-bold">{e.sleep_score}</p>
+                        <p className="text-[10px] text-muted-foreground">Score</p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Right: date, source, notes */}
+                  <div className="text-right space-y-1 shrink-0 ml-4">
+                    <p className="text-sm font-medium">{formatDate(e.date)}</p>
+                    <Badge variant="recovery" className="text-xs">{e.source}</Badge>
+                    {e.notes && <p className="text-xs text-muted-foreground max-w-[180px] truncate">{e.notes}</p>}
                   </div>
                 </div>
               ))}
