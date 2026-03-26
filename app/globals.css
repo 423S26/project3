@@ -85,6 +85,20 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Landing page: color-shifting page background                               */
+/* -------------------------------------------------------------------------- */
+@keyframes bg-shift {
+  0%   { background-color: hsl(222, 47%, 11%); }
+  33%  { background-color: hsl(217, 50%, 14%); }
+  66%  { background-color: hsl(226, 55%, 12%); }
+  100% { background-color: hsl(222, 47%, 11%); }
+}
+
+.animate-bg-shift {
+  animation: bg-shift 12s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Global base resets                                                         */
 /* -------------------------------------------------------------------------- */
 @layer base {
