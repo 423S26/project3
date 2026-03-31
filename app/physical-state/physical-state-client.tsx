@@ -17,6 +17,7 @@ import {
   createWorkoutSession,
   fetchWorkoutTemplates,
   createWorkoutTemplate,
+  deleteWorkoutTemplate,
   fetchMeals,
   createMeal,
   searchEdamamFoods,
@@ -831,19 +832,46 @@ function TrainingTab({ athleteId, isPsychologist }: { athleteId: string | null; 
       )}
 
       {/* Templates */}
-      {templates.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Workout Templates</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle className="text-lg">Workout Templates</CardTitle>
+          {!isPsychologist && (
+            <Button size="sm" variant="outline" onClick={() => setShowTemplateForm((p) => !p)}>
+              <Plus className="mr-1 h-4 w-4" />
+              {showTemplateForm ? "Cancel" : "New Template"}
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No templates yet. Create one to quickly log workouts.</p>
+          ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {templates.map((t) => (
                 <div key={t.id} className="rounded-lg border p-3 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{t.name}</span>
-                    <Badge variant="training" className="text-xs">{t.type}</Badge>
-                    {t.sport && <Badge variant="outline" className="text-xs">{t.sport}</Badge>}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium truncate">{t.name}</span>
+                      <Badge variant="training" className="text-xs shrink-0">{t.type}</Badge>
+                      {t.sport && <Badge variant="outline" className="text-xs shrink-0">{t.sport}</Badge>}
+                    </div>
+                    {!isPsychologist && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0 h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={async () => {
+                          try {
+                            await deleteWorkoutTemplate(t.id);
+                            load();
+                          } catch {
+                            /* swallow */
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                   {t.workout_template_exercises && t.workout_template_exercises.length > 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -853,9 +881,9 @@ function TrainingTab({ athleteId, isPsychologist }: { athleteId: string | null; 
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent sessions */}
       <Card>

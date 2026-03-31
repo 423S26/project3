@@ -25,15 +25,17 @@ import { ReadOnlyGoalRow } from "@/components/goals/read-only-goal-list";
 
 type ViewType = "dayGridMonth" | "timeGridWeek";
 
+interface AthleteProfileFields {
+  sport?: string;
+  position?: string;
+  team?: string;
+}
+
 interface AthleteInfo {
   id: string;
   name: string;
   email: string;
-  athleteProfile?: {
-    sport?: string;
-    position?: string;
-    team?: string;
-  }[] | null;
+  athleteProfile?: AthleteProfileFields | AthleteProfileFields[] | null;
 }
 
 interface CheckIn {
@@ -160,8 +162,8 @@ export function AthleteDrillDown({
     : [];
 
   const profile = Array.isArray(athlete?.athleteProfile)
-    ? athlete?.athleteProfile?.[0]
-    : null;
+    ? athlete.athleteProfile[0] ?? null
+    : athlete?.athleteProfile ?? null;
 
   if (loading) {
     return (
@@ -198,21 +200,23 @@ export function AthleteDrillDown({
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
               <User className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{athlete.name}</h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-2xl font-bold tracking-tight">{athlete.name}</h1>
+                {profile && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.sport && <Badge variant="outline">{profile.sport}</Badge>}
+                    {profile.position && <Badge variant="outline">{profile.position}</Badge>}
+                    {profile.team && <Badge variant="outline">{profile.team}</Badge>}
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{athlete.email}</p>
             </div>
           </div>
-          {profile && (
-            <div className="mt-2 flex gap-2">
-              {profile.sport && <Badge variant="outline">{profile.sport}</Badge>}
-              {profile.position && <Badge variant="outline">{profile.position}</Badge>}
-              {profile.team && <Badge variant="outline">{profile.team}</Badge>}
-            </div>
-          )}
         </div>
       </div>
 

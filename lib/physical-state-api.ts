@@ -217,6 +217,16 @@ export async function createWorkoutTemplate(data: {
   return res.json();
 }
 
+export async function deleteWorkoutTemplate(templateId: string): Promise<void> {
+  const res = await fetch(`/api/workouts/templates/${templateId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to delete template");
+  }
+}
+
 // ── Meals ───────────────────────────────────────────────────
 
 export interface MealLog {
