@@ -18,7 +18,10 @@ import {
   Target,
   Clock,
   CalendarDays,
+  Trophy,
 } from "lucide-react";
+import { fetchGoals, type AthleteGoal } from "@/lib/goals-api";
+import { ReadOnlyGoalRow } from "@/components/goals/read-only-goal-list";
 
 type ViewType = "dayGridMonth" | "timeGridWeek";
 
@@ -74,15 +77,18 @@ export function AthleteDrillDown({
   const [focusCheckInId, setFocusCheckInId] = useState<string | null>(
     initialFocusCheckInId ?? null
   );
+  const [goals, setGoals] = useState<AthleteGoal[]>([]);
 
-  // Load athlete info
+  // Load athlete info + goals
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/athletes/${athleteId}`);
-        if (res.ok) {
-          setAthlete(await res.json());
-        }
+        const [res, goalsData] = await Promise.all([
+          fetch(`/api/athletes/${athleteId}`),
+          fetchGoals(athleteId),
+        ]);
+        if (res.ok) setAthlete(await res.json());
+        setGoals(goalsData);
       } catch {
         // ignore
       } finally {
@@ -293,6 +299,29 @@ export function AthleteDrillDown({
           ))}
         </CardContent>
       </Card>
+
+      {/* Athlete Goals (read-only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5" />
+            Athlete Goals
+          </CardTitle>
+          <CardDescription>
+            {goals.length === 0
+              ? "This athlete hasn't set any goals yet."
+              : `${goals.filter((g) => g.status === "active").length} active, ${goals.filter((g) => g.status === "completed").length} completed`}
+          </CardDescription>
+        </CardHeader>
+        {goals.length > 0 && (
+          <CardContent className="space-y-2">
+            {goals.map((goal) => (
+              <ReadOnlyGoalRow key={goal.id} goal={goal} />
+            ))}
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 }
+

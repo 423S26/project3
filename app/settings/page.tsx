@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/supabase/server";
 import { AthleteProfileEditor } from "@/components/settings/athlete-profile-editor";
 import { DarkModeToggle } from "@/components/settings/dark-mode-toggle";
+import { AthleteGoalsEditor } from "@/components/settings/athlete-goals-editor";
+import { PsychologistProfileEditor } from "@/components/settings/psychologist-profile-editor";
+import { PsychologistGoalsViewer } from "@/components/settings/psychologist-goals-viewer";
 
 export default async function SettingsPage() {
   const user = await getAuthUser();
@@ -34,21 +37,17 @@ export default async function SettingsPage() {
             </div>
             <div className="flex-1">
               <CardTitle className="text-lg">Goals & Preferences</CardTitle>
-              <CardDescription>Set recovery and check-in goals</CardDescription>
+              <CardDescription>
+                {isPsychologist ? "View your athletes' goals" : "Set recovery and check-in goals"}
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Personal Goals</p>
-                <p className="text-sm text-muted-foreground">
-                  Set targets for check-in frequency, recovery, and training
-                </p>
-              </div>
-              <Button variant="outline" disabled>
-                Coming in Sprint 6
-              </Button>
-            </div>
+            {!isPsychologist ? (
+              <AthleteGoalsEditor />
+            ) : (
+              <PsychologistGoalsViewer />
+            )}
           </CardContent>
         </Card>
 
@@ -81,19 +80,7 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {!isPsychologist && <AthleteProfileEditor />}
-            {isPsychologist && (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Account Settings</p>
-                  <p className="text-sm text-muted-foreground">
-                    Update your profile and practitioner connection
-                  </p>
-                </div>
-                <Button variant="outline" disabled>
-                  Coming Soon
-                </Button>
-              </div>
-            )}
+            {isPsychologist && <PsychologistProfileEditor />}
           </CardContent>
         </Card>
 
