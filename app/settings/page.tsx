@@ -1,11 +1,11 @@
 /**
  * Route: /settings
- * Application settings and preferences page (goals, appearance, profile, notifications, privacy).
+ * Application settings and preferences page (goals, appearance, profile, privacy).
  * Currently displays placeholder content; most settings features coming in Sprint 6.
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Moon, User, Bell, Shield, Download, Target, MessageSquarePlus, ExternalLink } from "lucide-react";
+import { Settings, Moon, User, Shield, Download, Target, MessageSquarePlus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/supabase/server";
 import { AthleteProfileEditor } from "@/components/settings/athlete-profile-editor";
@@ -81,32 +81,6 @@ export default async function SettingsPage() {
           <CardContent className="space-y-4">
             {!isPsychologist && <AthleteProfileEditor />}
             {isPsychologist && <PsychologistProfileEditor />}
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-4">
-            <div className="rounded-lg bg-amber-100 p-2 text-amber-600">
-              <Bell className="h-6 w-6" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-lg">Notifications</CardTitle>
-              <CardDescription>Configure alerts and reminders</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Reminders</p>
-                <p className="text-sm text-muted-foreground">
-                  Get reminders for sessions, check-ins, and assessments
-                </p>
-              </div>
-              <Button variant="outline" disabled>
-                Coming Soon
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
