@@ -8,7 +8,6 @@ import { TodayPanel } from "./today-panel";
 import { LatestCheckInCard } from "@/components/psych/latest-checkin-card";
 import { buttonVariants } from "@/components/ui/button";
 import { EventCategory, AnchorEvent, getDefaultFilters } from "@/lib/event-types";
-import { getTodaysEvents } from "@/lib/mock-events";
 import { toLocalDateKey } from "@/lib/psych-checkins";
 import { fetchEvents } from "@/lib/physical-state-api";
 import { toFullCalendarEvent } from "@/lib/mock-events";
@@ -74,16 +73,10 @@ export function HomeDashboard() {
     .filter((e) => filters[e.category])
     .map(toFullCalendarEvent);
 
-  // Build today's events for the Today panel (DB + mock)
-  const mockTodaysEvents = getTodaysEvents();
   const todayKey = toLocalDateKey(new Date());
-  const dbTodaysEvents = dbEvents.filter((e) => {
-    const eventDate = toLocalDateKey(e.start);
-    return eventDate === todayKey;
-  });
-  const todaysEvents = [...mockTodaysEvents, ...dbTodaysEvents].sort(
-    (a, b) => a.start.getTime() - b.start.getTime()
-  );
+  const todaysEvents = dbEvents
+    .filter((e) => toLocalDateKey(e.start) === todayKey)
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   return (
     <div className="space-y-6">

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { EventCategory } from "@/lib/event-types";
-import { getFullCalendarEvents } from "@/lib/mock-events";
 import { toLocalDateKey } from "@/lib/psych-checkins";
 
 type ViewType = "dayGridMonth" | "timeGridWeek";
@@ -51,9 +50,7 @@ export function CalendarView({ view, onViewChange, filters, dbEvents = [], onEve
   const calendarRef = useRef<FullCalendar>(null);
   const router = useRouter();
 
-  // Get filtered events: mock events + DB-backed events (recovery, training, fueling, mood)
-  const mockEvents = getFullCalendarEvents(filters);
-  const events = [...mockEvents, ...dbEvents];
+  const events = dbEvents;
 
   useEffect(() => {
     if (calendarRef.current) {
