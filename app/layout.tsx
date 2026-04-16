@@ -16,6 +16,7 @@ import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AthleteProvider } from "@/components/auth/athlete-context";
+import { ThemeProvider } from "@/components/theme-provider";
 
 /** Load the Inter font from Google Fonts with the Latin subset. */
 const inter = Inter({
@@ -41,13 +42,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <SessionProvider>
-          <AthleteProvider>
-            <AppShell>{children}</AppShell>
-          </AthleteProvider>
-        </SessionProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(localStorage.getItem("anchor-theme")==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased`}>
+        <ThemeProvider>
+          <SessionProvider>
+            <AthleteProvider>
+              <AppShell>{children}</AppShell>
+            </AthleteProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

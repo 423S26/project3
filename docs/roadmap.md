@@ -12,8 +12,8 @@ Anchor is a mental and physical wellbeing tracking platform for sports psycholog
 |--------|-------|-------|------------------|
 | 1 | 1-2 | Skeleton & Dashboard | Navigation, calendar, mock data |
 | 2 | 3-4 | Psychological Check-Ins | Mood/stress/motivation logging |
-| 3 | 5-6 | Sessions & Assessments | Session scheduling, assessment templates |
-| 4 | 7-8 | Physical State & Recovery | Recovery/training load tracking |
+| 3 | 5-6 | Sessions & Physical State | Session scheduling, recovery/training load tracking |
+| 4 | 7-8 | Assessments | Assessment templates, due dates, reminders |
 | 5 | 9-10 | Fueling & Trends | Nutrition logging, trend charts |
 | 6 | 11-12 | Polish & Demo | UI consistency, ethics, presentation |
 
@@ -60,15 +60,36 @@ Anchor is a mental and physical wellbeing tracking platform for sports psycholog
 
 ---
 
-## Sprint 3 (Weeks 5-6): Sessions & Assessments
+## Sprint 3 (Weeks 5-6): Sessions & Physical State
 
-**Goal**: Support practitioner sessions and basic wellbeing assessments.
+**Goal**: Support practitioner sessions and begin physical recovery / training load tracking.
 
 ### Deliverables
 - **Sessions Page**
   - Session scheduling (date/time/type)
   - Notes field
   - Calendar integration
+- **Physical State Page**
+  - Recovery log: Fatigue, Soreness, Sleep quality
+  - Training load entry
+  - Calendar events for training/recovery blocks
+- **Dashboard**
+  - Sessions + physical state entries appear
+  - Today panel shows recovery status
+  - Filters for Training / Recovery
+- Psychological State: Minor polish
+
+### Acceptance Criteria
+- Create session → shows on calendar
+- Recovery/training load logged → stored + reflected
+
+---
+
+## Sprint 4 (Weeks 7-8): Assessments
+
+**Goal**: Support basic wellbeing assessments with templates, scheduling, and reminders.
+
+### Deliverables
 - **Assessments Page**
   - Simple assessment templates: Weekly wellbeing, Readiness score
   - Due dates
@@ -76,32 +97,10 @@ Anchor is a mental and physical wellbeing tracking platform for sports psycholog
 - **Dashboard**
   - Sessions + assessments appear
   - Due-soon list
-- Psychological State: Minor polish
-
-### Acceptance Criteria
-- Create session → shows on calendar
-- Complete assessment → stored + reflected
-
----
-
-## Sprint 4 (Weeks 7-8): Physical State & Recovery
-
-**Goal**: Track physical recovery and training load.
-
-### Deliverables
-- **Physical State Page**
-  - Recovery log: Fatigue, Soreness, Sleep quality
-  - Training load entry
-  - Calendar events for training/recovery blocks
-- **Dashboard**
-  - Today panel shows recovery status
-  - Filters for Training / Recovery
 - Fueling: Still minimal (checkbox placeholder)
 
 ### Acceptance Criteria
-- Recovery logged
-- Appears on dashboard
-- Trends begin to form
+- Complete assessment → stored + reflected
 
 ---
 

@@ -25,6 +25,7 @@ export function CaseloadList() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [athleteName, setAthleteName] = useState("");
   const [athleteEmail, setAthleteEmail] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
@@ -61,7 +62,10 @@ export function CaseloadList() {
       const res = await fetch("/api/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ athleteEmail: athleteEmail.trim() }),
+        body: JSON.stringify({
+          athleteName: athleteName.trim(),
+          athleteEmail: athleteEmail.trim(),
+        }),
       });
 
       if (!res.ok) {
@@ -72,6 +76,7 @@ export function CaseloadList() {
       }
 
       // Success - reload caseload
+      setAthleteName("");
       setAthleteEmail("");
       setShowAddForm(false);
       await loadCaseload();
@@ -133,6 +138,13 @@ export function CaseloadList() {
       {/* Add athlete form */}
       {showAddForm && (
         <form onSubmit={handleAddAthlete} className="space-y-2 rounded-lg border p-2">
+          <input
+            value={athleteName}
+            onChange={(e) => setAthleteName(e.target.value)}
+            placeholder="Athlete name"
+            required
+            className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
           <input
             type="email"
             value={athleteEmail}

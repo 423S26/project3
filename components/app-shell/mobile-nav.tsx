@@ -21,15 +21,17 @@ import {
   Brain,
   Activity,
   ClipboardList,
-  Settings,
   Anchor,
+  Users,
+  Mail,
   Menu,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/user-menu";
-import { CaseloadList } from "@/components/psychologist/caseload-list";
+import { UnreadBadge } from "@/components/messages/unread-badge";
 import { useSession } from "@/components/auth/session-provider";
 
 /**
@@ -37,11 +39,11 @@ import { useSession } from "@/components/auth/session-provider";
  */
 const athleteNavItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
   { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
   { href: "/psychological-state", label: "Psychological State", icon: <Brain className="h-5 w-5" /> },
   { href: "/physical-state", label: "Physical State", icon: <Activity className="h-5 w-5" /> },
   { href: "/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
 /**
@@ -49,7 +51,10 @@ const athleteNavItems = [
  */
 const psychologistNavItems = [
   { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
+  { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
+  { href: "/psychologist/athletes", label: "Athletes", icon: <Users className="h-5 w-5" /> },
+  { href: "/psychologist/sessions", label: "Sessions", icon: <CalendarDays className="h-5 w-5" /> },
+  { href: "/psychologist/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
 ];
 
 /** Mobile header bar + slide-out navigation drawer. Hidden on lg+ screens. */
@@ -96,13 +101,6 @@ export function MobileNav() {
           <span className="text-lg font-semibold">Anchor</span>
         </div>
         
-        {/* Psychologist: Caseload List | Athlete: Nothing here */}
-        {!loading && isPsychologist && (
-          <div className="border-b">
-            <CaseloadList />
-          </div>
-        )}
-        
         <div className="space-y-1 p-4">
           {loading ? (
             <div className="rounded-lg px-3 py-2 text-sm text-muted-foreground">
@@ -117,6 +115,7 @@ export function MobileNav() {
                 className="w-full"
               >
                 <span onClick={() => setIsOpen(false)}>{item.label}</span>
+                {item.href === "/messages" && <UnreadBadge />}
               </NavLink>
             ))
           )}

@@ -26,6 +26,8 @@ const badgeVariants = cva(
           "border-transparent bg-orange-500 text-white",
         assessments:
           "border-transparent bg-teal-500 text-white",
+        sessions:
+          "border-transparent bg-pink-500 text-white",
       },
     },
     defaultVariants: {

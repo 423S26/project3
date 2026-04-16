@@ -38,11 +38,20 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isPublic =
+    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
+    pathname.startsWith("/landing") ||
     pathname.startsWith("/feedback") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/feedback");
+
+  // Unauthenticated users hitting the root go to the landing page
+  if (!user && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/landing";
+    return NextResponse.redirect(url);
+  }
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

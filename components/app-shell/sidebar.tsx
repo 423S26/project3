@@ -16,13 +16,14 @@ import {
   Brain,
   Activity,
   ClipboardList,
-  Settings,
   Anchor,
   Users,
+  Mail,
+  CalendarDays,
 } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { UserMenu } from "@/components/auth/user-menu";
-import { CaseloadList } from "@/components/psychologist/caseload-list";
+import { UnreadBadge } from "@/components/messages/unread-badge";
 import { useSession } from "@/components/auth/session-provider";
 
 /**
@@ -30,11 +31,11 @@ import { useSession } from "@/components/auth/session-provider";
  */
 const athleteNavItems = [
   { href: "/", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
+  { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
   { href: "/sessions", label: "Sessions", icon: <MessageSquare className="h-5 w-5" /> },
   { href: "/psychological-state", label: "Psychological State", icon: <Brain className="h-5 w-5" /> },
   { href: "/physical-state", label: "Physical State", icon: <Activity className="h-5 w-5" /> },
   { href: "/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
 /**
@@ -42,7 +43,10 @@ const athleteNavItems = [
  */
 const psychologistNavItems = [
   { href: "/psychologist", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="h-5 w-5" /> },
+  { href: "/messages", label: "Messages", icon: <Mail className="h-5 w-5" /> },
+  { href: "/psychologist/athletes", label: "Athletes", icon: <Users className="h-5 w-5" /> },
+  { href: "/psychologist/sessions", label: "Sessions", icon: <CalendarDays className="h-5 w-5" /> },
+  { href: "/psychologist/assessments", label: "Assessments", icon: <ClipboardList className="h-5 w-5" /> },
 ];
 
 /** Desktop sidebar with logo, nav links, and user menu. */
@@ -59,13 +63,6 @@ export function Sidebar() {
         <span className="text-lg font-semibold">Anchor</span>
       </div>
 
-      {/* Psychologist: Caseload List | Athlete: Nothing here */}
-      {!loading && isPsychologist && (
-        <div className="border-b">
-          <CaseloadList />
-        </div>
-      )}
-
       {/* Primary navigation links - wait for session so role-specific tabs don't flash */}
       <nav className="flex-1 space-y-1 p-4">
         {loading ? (
@@ -76,6 +73,7 @@ export function Sidebar() {
           navItems.map((item) => (
             <NavLink key={item.href} href={item.href} icon={item.icon}>
               {item.label}
+              {item.href === "/messages" && <UnreadBadge />}
             </NavLink>
           ))
         )}

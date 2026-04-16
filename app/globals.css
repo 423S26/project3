@@ -85,6 +85,20 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Landing page: color-shifting page background                               */
+/* -------------------------------------------------------------------------- */
+@keyframes bg-shift {
+  0%   { background-color: hsl(222, 47%, 11%); }
+  33%  { background-color: hsl(217, 50%, 14%); }
+  66%  { background-color: hsl(226, 55%, 12%); }
+  100% { background-color: hsl(222, 47%, 11%); }
+}
+
+.animate-bg-shift {
+  animation: bg-shift 12s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Global base resets                                                         */
 /* -------------------------------------------------------------------------- */
 @layer base {
@@ -95,6 +109,13 @@
   /* Ensure the body inherits the themed background and text colors */
   body {
     @apply bg-background text-foreground;
+  }
+
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
   }
 }
 
@@ -112,6 +133,27 @@
   --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
   --fc-button-active-border-color: hsl(var(--primary) / 0.8);
   --fc-today-bg-color: hsl(var(--accent) / 0.5);
+  --fc-page-bg-color: hsl(var(--card));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--foreground));
+  --fc-list-event-hover-bg-color: hsl(var(--accent));
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-list-day-text,
+.fc .fc-list-day-side-text {
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-col-header-cell {
+  background-color: hsl(var(--muted));
+}
+
+.fc .fc-daygrid-more-link {
+  color: hsl(var(--primary));
 }
 
 .fc .fc-day-today {

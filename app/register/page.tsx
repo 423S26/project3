@@ -169,6 +169,15 @@ export default function RegisterPage() {
               Having trouble? Submit feedback
             </a>
           </div>
+
+          <div className="mt-2 text-center">
+            <a
+              href="/landing"
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              ← Back to home
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>
