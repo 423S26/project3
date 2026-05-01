@@ -50,6 +50,10 @@ Visit the live site: **[https://anchor-testwebsite.vercel.app/](https://anchor-t
 
 Register as an Athlete or Psychologist to explore all features.
 
+### Tech Demo
+
+https://youtu.be/i2D0NkmwtMA
+
 ### Local Development
 
 If you want to run the project locally:
